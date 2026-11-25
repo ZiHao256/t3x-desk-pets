@@ -1,0 +1,371 @@
+/* t3code-enhancer 桌宠：主体与接触影关键帧。按 pets.css → pets-keyframes.css → pets-fx.css → pets-subagents.css 的顺序拼接注入。 */
+/* ==========================================================================
+   Keyframes · Body（全部仅驱动 transform / opacity）
+   ========================================================================== */
+
+/* 抛物线跃入：0–56% 为等加速重力采样段（线性插值拟合二次曲线），56–100% 为触地挤压与回弹 */
+@keyframes t3x-pet-enter-jump {
+  0% {
+    opacity: 0;
+    transform: translate3d(48px, -30px, 0) scale(0.84, 1.12) rotate(9deg);
+    animation-timing-function: linear;
+  }
+  9% {
+    opacity: 1;
+    transform: translate3d(39px, -39.5px, 0) scale(0.92, 1.06) rotate(5deg);
+    animation-timing-function: linear;
+  }
+  20% {
+    opacity: 1;
+    transform: translate3d(28px, -44px, 0) scale(1.02, 0.98) rotate(0deg);
+    animation-timing-function: linear;
+  }
+  33% {
+    opacity: 1;
+    transform: translate3d(17px, -38px, 0) scale(0.96, 1.06) rotate(-4deg);
+    animation-timing-function: linear;
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(7.5px, -22.5px, 0) scale(0.9, 1.13) rotate(-7deg);
+    animation-timing-function: linear;
+  }
+  56% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.96, 1.05) rotate(-2deg);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.22, 0.78) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.34, 1.45, 0.64, 1);
+  }
+  79% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(0.93, 1.09) rotate(1.5deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  90% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.03, 0.975) rotate(0deg);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+}
+
+/* 瞬移入场：细窄竖向光片迅速展开并带微小弹性过冲 */
+@keyframes t3x-pet-enter-blink {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(0.06, 1.46);
+  }
+  16% {
+    opacity: 0.92;
+    transform: translate3d(0, -5px, 0) scale(0.18, 1.32);
+  }
+  44% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.16, 0.86);
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(0, -1.5px, 0) scale(0.95, 1.06);
+  }
+  86% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.02, 0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+  }
+}
+
+/* 奔跑退场：启动蹬地 + 轻微步频起伏 + 加速跑出 --t3x-run-dx 并柔和淡出 */
+@keyframes t3x-pet-exit-run {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+    transform: translate3d(calc(var(--t3x-run-dx, 120px) * 0.05), 0, 0)
+      scale(1.06, 0.94) rotate(calc(var(--t3x-pet-lean-dir) * 4deg));
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(calc(var(--t3x-run-dx, 120px) * 0.24), -2.5px, 0)
+      scale(0.98, 1.03) rotate(calc(var(--t3x-pet-lean-dir) * 6deg));
+  }
+  55% {
+    opacity: 0.94;
+    transform: translate3d(calc(var(--t3x-run-dx, 120px) * 0.52), 0, 0)
+      scale(1.03, 0.97) rotate(calc(var(--t3x-pet-lean-dir) * 7deg));
+  }
+  78% {
+    opacity: 0.42;
+    transform: translate3d(calc(var(--t3x-run-dx, 120px) * 0.8), -2px, 0)
+      scale(0.97, 1.02) rotate(calc(var(--t3x-pet-lean-dir) * 7.5deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--t3x-run-dx, 120px), -1px, 0)
+      scale(0.92, 0.96) rotate(calc(var(--t3x-pet-lean-dir) * 8deg));
+  }
+}
+
+/* 瞬移退场：预压蓄势 → 向上拉细为光针 → 归零消散 */
+@keyframes t3x-pet-exit-blink {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+  }
+  22% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.12, 0.88);
+  }
+  58% {
+    opacity: 0.88;
+    transform: translate3d(0, -6px, 0) scale(0.14, 1.4);
+  }
+  82% {
+    opacity: 0.24;
+    transform: translate3d(0, -14px, 0) scale(0.03, 1.56);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -16px, 0) scale(0.01, 1.62);
+  }
+}
+
+/* 松手落地：承接 drag 姿态快速触地，挤压后微弹归位 */
+@keyframes t3x-pet-drop {
+  0% {
+    transform: translate3d(0, -6.5px, 0) scale(1.06, 1.06);
+  }
+  24% {
+    transform: translate3d(0, 0, 0) scale(1.18, 0.82);
+  }
+  54% {
+    transform: translate3d(0, -2.5px, 0) scale(0.94, 1.08);
+  }
+  80% {
+    transform: translate3d(0, 0, 0) scale(1.03, 0.975);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+  }
+}
+
+/* 戳一下小跳：蓄力微压 → 轻快起跳微歪 → 柔软落地 */
+@keyframes t3x-pet-poke {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+  15% {
+    transform: translate3d(0, 0, 0) scale(1.13, 0.87) rotate(0deg);
+  }
+  46% {
+    transform: translate3d(0, -13px, 0) scale(0.92, 1.11)
+      rotate(calc(var(--t3x-pet-lean-dir) * -3.5deg));
+  }
+  74% {
+    transform: translate3d(0, 0, 0) scale(1.1, 0.9)
+      rotate(calc(var(--t3x-pet-lean-dir) * 1deg));
+  }
+  90% {
+    transform: translate3d(0, -1px, 0) scale(0.98, 1.02) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+}
+
+/* 双宠互动（bump）：蓄力微压 → 朝对方跃起碰头 → 弹开落定 */
+@keyframes t3x-pet-bump {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+  14% {
+    transform: translate3d(calc(var(--t3x-toward) * -2px), 0, 0) scale(1.1, 0.9)
+      rotate(calc(var(--t3x-toward) * -3deg));
+  }
+  36% {
+    transform: translate3d(calc(var(--t3x-toward) * 8px), -11px, 0) scale(0.93, 1.09)
+      rotate(calc(var(--t3x-toward) * 8.5deg));
+  }
+  47% {
+    transform: translate3d(calc(var(--t3x-toward) * 6.5px), -9.5px, 0) scale(1.05, 0.95)
+      rotate(calc(var(--t3x-toward) * 6deg));
+  }
+  74% {
+    transform: translate3d(calc(var(--t3x-toward) * -1px), 0, 0) scale(1.09, 0.91)
+      rotate(calc(var(--t3x-toward) * -1.5deg));
+  }
+  89% {
+    transform: translate3d(0, -1.5px, 0) scale(0.98, 1.02) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg);
+  }
+}
+
+/* ==========================================================================
+   Keyframes · Shadow（贴合地面同步跟随与缩放）
+   ========================================================================== */
+
+@keyframes t3x-pet-shadow-enter-jump {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + 48px), 0, 0) scale(0.24, 0.35);
+  }
+  20% {
+    opacity: 0.28;
+    transform: translate3d(calc(-50% + 28px), 0, 0) scale(0.46, 0.45);
+  }
+  45% {
+    opacity: 0.64;
+    transform: translate3d(calc(-50% + 7.5px), 0, 0) scale(0.76, 0.78);
+  }
+  56% {
+    opacity: 0.94;
+    transform: translate3d(-50%, 0, 0) scale(0.96, 0.95);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1.22, 1.1);
+  }
+  79% {
+    opacity: 0.84;
+    transform: translate3d(-50%, 0, 0) scale(0.9, 0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+}
+
+@keyframes t3x-pet-shadow-enter-blink {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0) scale(0.14, 0.45);
+  }
+  18% {
+    opacity: 0.34;
+    transform: translate3d(-50%, 0, 0) scale(0.32, 0.68);
+  }
+  44% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1.18, 1.08);
+  }
+  68% {
+    opacity: 0.88;
+    transform: translate3d(-50%, 0, 0) scale(0.95, 0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+}
+
+@keyframes t3x-pet-shadow-exit-run {
+  0% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+  32% {
+    opacity: 0.88;
+    transform: translate3d(calc(-50% + var(--t3x-run-dx, 120px) * 0.24), 0, 0) scale(0.92, 0.9);
+  }
+  65% {
+    opacity: 0.46;
+    transform: translate3d(calc(-50% + var(--t3x-run-dx, 120px) * 0.64), 0, 0) scale(0.76, 0.78);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--t3x-run-dx, 120px)), 0, 0) scale(0.54, 0.6);
+  }
+}
+
+@keyframes t3x-pet-shadow-exit-blink {
+  0% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+  24% {
+    opacity: 0.96;
+    transform: translate3d(-50%, 0, 0) scale(1.1, 1.04);
+  }
+  68% {
+    opacity: 0.28;
+    transform: translate3d(-50%, 0, 0) scale(0.3, 0.55);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0) scale(0.05, 0.3);
+  }
+}
+
+@keyframes t3x-pet-shadow-drop {
+  0% {
+    opacity: 0.38;
+    transform: translate3d(-50%, 0, 0) scale(0.68, 0.72);
+  }
+  24% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1.16, 1.08);
+  }
+  54% {
+    opacity: 0.85;
+    transform: translate3d(-50%, 0, 0) scale(0.92, 0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+}
+
+@keyframes t3x-pet-shadow-poke {
+  0% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+  15% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1.1, 1.04);
+  }
+  46% {
+    opacity: 0.44;
+    transform: translate3d(-50%, 0, 0) scale(0.62, 0.66);
+  }
+  74% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1.09, 1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+}
+
+@keyframes t3x-pet-shadow-bump {
+  0%, 100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1, 1);
+  }
+  14% {
+    opacity: 1;
+    transform: translate3d(calc(-50% - var(--t3x-toward) * 2px), 0, 0) scale(1.09, 1.04);
+  }
+  40% {
+    opacity: 0.42;
+    transform: translate3d(calc(-50% + var(--t3x-toward) * 8px), 0, 0) scale(0.62, 0.66);
+  }
+  74% {
+    opacity: 1;
+    transform: translate3d(calc(-50% - var(--t3x-toward) * 1px), 0, 0) scale(1.08, 1.04);
+  }
+}

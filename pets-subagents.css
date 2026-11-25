@@ -1,0 +1,396 @@
+/* ==========================================================================
+   t3code-enhancer · Subagent Desktop Pets Layer (.t3x-pet[data-role="sub"])
+   拼接在 pets.css 之后注入；复用 pets.css 尺寸变量、角色接地与退场动画
+   仅动画 transform / opacity / filter；绝不覆写 .t3x-pet-sprite 的 background-*
+   ========================================================================== */
+
+/* ---------- 子宠物基础缩放、朝向系数与主次层级 ---------- */
+
+.t3x-pet[data-role="sub"] {
+  /* 以输入框顶边（calc(100% - --t3x-pet-sink)）为缩放不动点，
+     保证缩至 0.76x 后双脚仍稳踩顶边 */
+  --t3x-sub-scale: 0.76;
+  --t3x-toward: 1; /* side="left" 朝右(+1)，side="right" 朝左(-1) */
+
+  /* 特效垂直锚点默认值，矮胖的宠物在 pet 定义里覆盖 */
+  --t3x-sub-greet-top: -15%;
+  --t3x-sub-highfive-top: 22%;
+  --t3x-sub-droop-top: -10%;
+
+  /* 失败态小乌云与额角汗滴（浅色主题） */
+  --t3x-sub-cloud-hi: rgba(148, 163, 184, 0.72);
+  --t3x-sub-cloud-lo: rgba(100, 116, 139, 0.62);
+  --t3x-sub-sweat-core: #e0f2fe;
+  --t3x-sub-sweat-body: #38bdf8;
+  --t3x-sub-sweat-edge: rgba(2, 132, 199, 0.55);
+
+  /* 默认蓝色（#5b7cff）打招呼星芒与击掌火花（浅色模式高饱和实心） */
+  --t3x-sub-greet-fx:
+    radial-gradient(ellipse 46% 12% at 46% 48%, #4868f5 0%, rgba(91, 124, 255, 0.45) 55%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(ellipse 12% 46% at 46% 48%, #4868f5 0%, rgba(91, 124, 255, 0.45) 55%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.6px, rgba(91, 124, 255, 0.35) 2.5px, transparent 3.4px) 16% 68% / 8px 8px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.5px, rgba(137, 164, 255, 0.38) 2.4px, transparent 3.2px) 84% 26% / 7px 7px no-repeat;
+  --t3x-sub-hf-ring:
+    radial-gradient(circle, transparent 36%, rgba(91, 124, 255, 0.84) 53%, rgba(137, 164, 255, 0.28) 66%, transparent 76%);
+  --t3x-sub-hf-sparks:
+    radial-gradient(circle, #4868f5 0 1.8px, rgba(91, 124, 255, 0.44) 2.8px, transparent 3.6px) 50% 8% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.7px, rgba(137, 164, 255, 0.44) 2.6px, transparent 3.4px) 86% 28% / 8px 8px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.7px, rgba(91, 124, 255, 0.42) 2.5px, transparent 3.3px) 84% 74% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.6px, rgba(91, 124, 255, 0.4) 2.4px, transparent 3.2px) 50% 92% / 8px 8px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.7px, rgba(91, 124, 255, 0.42) 2.5px, transparent 3.3px) 14% 72% / 8px 8px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.7px, rgba(137, 164, 255, 0.44) 2.6px, transparent 3.4px) 16% 26% / 8px 8px no-repeat;
+
+  z-index: 1; /* 可以单独拖动：pointer-events / cursor 沿用 .t3x-pet */
+  transform: scale(var(--t3x-sub-scale));
+  transform-origin: 50% calc(100% - var(--t3x-pet-sink));
+}
+
+.t3x-pet[data-role="sub"][data-side="left"]  { --t3x-toward: 1; }
+.t3x-pet[data-role="sub"][data-side="right"] { --t3x-toward: -1; }
+
+/* 互动瞬间短暂抬升层级使接触点火花不被主宠遮挡，退场时沉至最底 */
+.t3x-pet[data-role="sub"][data-motion="greet"],
+.t3x-pet[data-role="sub"][data-motion="highfive"] { z-index: 3; }
+.t3x-pet[data-role="sub"][data-motion="drag"],
+.t3x-pet[data-role="sub"][data-motion="bump"] { z-index: 4; }
+
+.t3x-pet[data-role="sub"][data-motion="exit-run"],
+.t3x-pet[data-role="sub"][data-motion="exit-blink"] { z-index: 0; }
+
+.t3x-pet[data-role="sub"] .t3x-pet-shadow { opacity: 0.84; }
+
+/* ---------- 深色主题适配（白心高光 + 主题色外晕） ---------- */
+
+html.dark .t3x-pet[data-role="sub"] {
+  --t3x-sub-cloud-hi: rgba(203, 213, 225, 0.68);
+  --t3x-sub-cloud-lo: rgba(148, 163, 184, 0.54);
+  --t3x-sub-sweat-core: #f0f9ff;
+  --t3x-sub-sweat-body: #60a5fa;
+  --t3x-sub-sweat-edge: rgba(56, 189, 248, 0.42);
+  --t3x-sub-greet-fx:
+    radial-gradient(ellipse 46% 12% at 46% 48%, #ffffff 0%, #89a4ff 48%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(ellipse 12% 46% at 46% 48%, #ffffff 0%, #89a4ff 48%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.5px) 16% 68% / 8px 8px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1.1px, #5b7cff 2.2px, transparent 3.2px) 84% 26% / 7px 7px no-repeat;
+  --t3x-sub-hf-ring:
+    radial-gradient(circle, transparent 36%, rgba(186, 205, 255, 0.94) 52%, rgba(91, 124, 255, 0.38) 66%, transparent 76%);
+  --t3x-sub-hf-sparks:
+    radial-gradient(circle, #ffffff 0 1.3px, #5b7cff 2.6px, transparent 3.7px) 50% 8% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.3px, #a9bfff 2.5px, transparent 3.5px) 86% 28% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.4px) 84% 74% / 8px 8px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1.1px, #5b7cff 2.2px, transparent 3.2px) 50% 92% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.4px) 14% 72% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.3px, #a9bfff 2.5px, transparent 3.5px) 16% 26% / 8px 8px no-repeat;
+}
+
+/* ==========================================================================
+   子宠物动作状态映射（animation-name 严格匹配 JS 监听契约 t3x-pet-<motion>）
+   ========================================================================== */
+
+/* 1. sub-run（无限循环）：轻快步频起伏 + 脚后小尘 */
+.t3x-pet[data-role="sub"][data-motion="sub-run"] .t3x-pet-body {
+  animation: t3x-pet-sub-run-bob 300ms ease-in-out infinite;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-run"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-sub-run 300ms ease-in-out infinite;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-run"] .t3x-pet-fx::before {
+  left: 50%;
+  bottom: calc(var(--t3x-pet-shadow-bottom) + 1px);
+  width: calc(var(--t3x-pet-w) * 0.22);
+  height: calc(var(--t3x-pet-w) * 0.1);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, var(--t3x-pet-dust) 0%, transparent 72%);
+  animation: t3x-pet-fx-sub-run-dust 300ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* 2. sub-seat（320ms）：切进运行中会话直接落座，轻淡入微上浮落定 */
+.t3x-pet[data-role="sub"][data-motion="sub-seat"] .t3x-pet-body {
+  animation: t3x-pet-sub-seat 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-seat"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-sub-seat 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 3. greet（640ms）：朝主宠方向小跳微倾打招呼 + 两宠间上方精致星芒 */
+.t3x-pet[data-role="sub"][data-motion="greet"] .t3x-pet-body {
+  animation: t3x-pet-greet 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="greet"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-greet 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="greet"] .t3x-pet-fx::after {
+  left: calc(50% + var(--t3x-toward) * 34%);
+  top: var(--t3x-sub-greet-top);
+  width: 28px;
+  height: 22px;
+  background: var(--t3x-sub-greet-fx);
+  transform-origin: 50% 80%;
+  animation: t3x-pet-fx-sub-greet 450ms cubic-bezier(0.16, 1, 0.3, 1) 85ms both;
+}
+
+/* 4. highfive（520ms）：收工朝主宠跃近约 7px 击掌回位 + 接触点主题火花环 */
+.t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-body {
+  animation: t3x-pet-highfive 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-highfive 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-fx::before {
+  left: calc(50% + var(--t3x-toward) * 44%);
+  top: var(--t3x-sub-highfive-top);
+  width: 28px;
+  height: 28px;
+  background: var(--t3x-sub-hf-ring);
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-sub-hf-ring 260ms cubic-bezier(0.16, 1, 0.3, 1) 145ms both;
+}
+.t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-fx::after {
+  left: calc(50% + var(--t3x-toward) * 44%);
+  top: var(--t3x-sub-highfive-top);
+  width: 42px;
+  height: 42px;
+  background: var(--t3x-sub-hf-sparks);
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-sub-hf-sparks 310ms cubic-bezier(0.16, 1, 0.3, 1) 145ms both;
+}
+
+/* 5. sub-droop（700ms）：失败/取消下沉轻摇去饱和（both 保持下沉），小乌云 + 汗滴 */
+.t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-body {
+  animation: t3x-pet-sub-droop 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-sub-droop 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-fx::before {
+  left: calc(50% - var(--t3x-toward) * 6%);
+  top: var(--t3x-sub-droop-top);
+  width: 26px;
+  height: 13px;
+  background:
+    radial-gradient(ellipse 34% 46% at 32% 62%, var(--t3x-sub-cloud-lo) 0%, transparent 74%),
+    radial-gradient(ellipse 38% 54% at 54% 48%, var(--t3x-sub-cloud-hi) 0%, transparent 74%),
+    radial-gradient(ellipse 30% 42% at 74% 64%, var(--t3x-sub-cloud-lo) 0%, transparent 74%);
+  transform-origin: 50% 70%;
+  animation: t3x-pet-fx-sub-cloud 700ms ease-out both;
+}
+.t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-fx::after {
+  left: calc(50% + var(--t3x-toward) * 32%);
+  top: calc(var(--t3x-sub-droop-top) + 12%);
+  width: 7px;
+  height: 10px;
+  border-radius: 50% 50% 50% 50% / 64% 64% 36% 36%;
+  background: radial-gradient(
+    circle at 38% 36%,
+    var(--t3x-sub-sweat-core) 0 18%,
+    var(--t3x-sub-sweat-body) 58%,
+    var(--t3x-sub-sweat-edge) 100%
+  );
+  transform-origin: 50% 20%;
+  animation: t3x-pet-fx-sub-sweat 540ms ease-in 120ms both;
+}
+
+/* ==========================================================================
+   溢出计数徽标（.t3x-pet-badge）：JS 控 inline left/bottom，CSS 控质感与 pop
+   ========================================================================== */
+
+.t3x-pet-badge {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #27272a;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transform-origin: 20% 85%;
+  will-change: transform, opacity;
+  animation: t3x-pet-badge-pop 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet-badge[data-side="left"] { transform-origin: 80% 85%; }
+
+html.dark .t3x-pet-badge {
+  color: #f4f4f5;
+  background: rgba(30, 30, 34, 0.86);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
+}
+
+/* ==========================================================================
+   Keyframes · Body（仅 transform / opacity / filter）
+   ========================================================================== */
+
+@keyframes t3x-pet-sub-run-bob {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05, 0.95) rotate(calc(var(--t3x-pet-lean-dir) * 5deg)); }
+  50%      { transform: translate3d(0, -3.5px, 0) scale(0.96, 1.05) rotate(calc(var(--t3x-pet-lean-dir) * 7deg)); }
+}
+
+@keyframes t3x-pet-sub-seat {
+  0%   { opacity: 0; transform: translate3d(0, 5px, 0) scale(0.88, 0.92); }
+  58%  { opacity: 1; transform: translate3d(0, -2.5px, 0) scale(0.98, 1.03); }
+  84%  { opacity: 1; transform: translate3d(0, 0, 0) scale(1.03, 0.975); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1, 1); }
+}
+
+@keyframes t3x-pet-greet {
+  0%   { transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg); }
+  14%  { transform: translate3d(0, 0, 0) scale(1.09, 0.91) rotate(0deg); }
+  36%  { transform: translate3d(calc(var(--t3x-toward) * 4px), -9.5px, 0) scale(0.94, 1.08) rotate(calc(var(--t3x-toward) * 5.5deg)); }
+  56%  { transform: translate3d(calc(var(--t3x-toward) * 1.5px), 0, 0) scale(1.07, 0.93) rotate(calc(var(--t3x-toward) * 2deg)); }
+  74%  { transform: translate3d(calc(var(--t3x-toward) * 2px), -3px, 0) scale(0.98, 1.03) rotate(calc(var(--t3x-toward) * 4deg)); }
+  90%  { transform: translate3d(0, 0, 0) scale(1.02, 0.985) rotate(0deg); }
+  100% { transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg); }
+}
+
+/* 内部位移 9.5px 经父级 scale(0.76) 后实际朝主宠靠近约 7.2px */
+@keyframes t3x-pet-highfive {
+  0%   { transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg); }
+  16%  { transform: translate3d(calc(var(--t3x-toward) * -2px), 0, 0) scale(1.11, 0.89) rotate(calc(var(--t3x-toward) * -3.5deg)); }
+  36%  { transform: translate3d(calc(var(--t3x-toward) * 9.5px), -10.5px, 0) scale(0.93, 1.09) rotate(calc(var(--t3x-toward) * 9.5deg)); }
+  46%  { transform: translate3d(calc(var(--t3x-toward) * 8.5px), -9.5px, 0) scale(1.04, 0.96) rotate(calc(var(--t3x-toward) * 7.5deg)); }
+  72%  { transform: translate3d(calc(var(--t3x-toward) * -1px), 0, 0) scale(1.09, 0.91) rotate(calc(var(--t3x-toward) * -1.5deg)); }
+  88%  { transform: translate3d(0, -1.5px, 0) scale(0.98, 1.02) rotate(0deg); }
+  100% { transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg); }
+}
+
+@keyframes t3x-pet-sub-droop {
+  0%   { opacity: 1;    filter: saturate(1) brightness(1);       transform: translate3d(0, 0, 0) scale(1, 1) rotate(0deg); }
+  18%  { opacity: 0.98; filter: saturate(0.88) brightness(0.98); transform: translate3d(0, 1px, 0) scale(1.04, 0.96) rotate(calc(var(--t3x-toward) * -3.5deg)); }
+  38%  { opacity: 0.93; filter: saturate(0.74) brightness(0.95); transform: translate3d(0, 2.5px, 0) scale(1.06, 0.93) rotate(calc(var(--t3x-toward) * 3deg)); }
+  58%  { opacity: 0.89; filter: saturate(0.64) brightness(0.93); transform: translate3d(0, 3.5px, 0) scale(1.07, 0.91) rotate(calc(var(--t3x-toward) * -2.8deg)); }
+  78%  { opacity: 0.87; filter: saturate(0.58) brightness(0.92); transform: translate3d(0, 3.5px, 0) scale(1.05, 0.92) rotate(calc(var(--t3x-toward) * 1.2deg)); }
+  100% { opacity: 0.86; filter: saturate(0.56) brightness(0.92); transform: translate3d(0, 3.5px, 0) scale(1.05, 0.92) rotate(calc(var(--t3x-toward) * -1.5deg)); }
+}
+
+/* ==========================================================================
+   Keyframes · Shadow, FX & Badge
+   ========================================================================== */
+
+@keyframes t3x-pet-shadow-sub-run {
+  0%, 100% { opacity: 0.86; transform: translate3d(-50%, 0, 0) scale(1.04, 1); }
+  50%      { opacity: 0.56; transform: translate3d(-50%, 0, 0) scale(0.76, 0.8); }
+}
+
+@keyframes t3x-pet-shadow-sub-seat {
+  0%   { opacity: 0;    transform: translate3d(-50%, 0, 0) scale(0.45, 0.6); }
+  60%  { opacity: 0.72; transform: translate3d(-50%, 0, 0) scale(0.92, 0.92); }
+  100% { opacity: 0.84; transform: translate3d(-50%, 0, 0) scale(1, 1); }
+}
+
+@keyframes t3x-pet-shadow-greet {
+  0%, 100% { opacity: 0.84; transform: translate3d(-50%, 0, 0) scale(1, 1); }
+  14%      { opacity: 0.9;  transform: translate3d(-50%, 0, 0) scale(1.08, 1.04); }
+  36%      { opacity: 0.44; transform: translate3d(calc(-50% + var(--t3x-toward) * 4px), 0, 0) scale(0.66, 0.7); }
+  56%      { opacity: 0.88; transform: translate3d(calc(-50% + var(--t3x-toward) * 1.5px), 0, 0) scale(1.05, 1.02); }
+  74%      { opacity: 0.68; transform: translate3d(calc(-50% + var(--t3x-toward) * 2px), 0, 0) scale(0.84, 0.86); }
+}
+
+@keyframes t3x-pet-shadow-highfive {
+  0%, 100% { opacity: 0.84; transform: translate3d(-50%, 0, 0) scale(1, 1); }
+  16%      { opacity: 0.92; transform: translate3d(calc(-50% - var(--t3x-toward) * 2px), 0, 0) scale(1.1, 1.04); }
+  40%      { opacity: 0.4;  transform: translate3d(calc(-50% + var(--t3x-toward) * 9px), 0, 0) scale(0.62, 0.66); }
+  72%      { opacity: 0.88; transform: translate3d(calc(-50% - var(--t3x-toward) * 1px), 0, 0) scale(1.07, 1.04); }
+}
+
+@keyframes t3x-pet-shadow-sub-droop {
+  0%   { opacity: 0.84; transform: translate3d(-50%, 0, 0) scale(1, 1); }
+  100% { opacity: 0.92; transform: translate3d(-50%, 0, 0) scale(1.1, 1.06); }
+}
+
+@keyframes t3x-pet-fx-sub-run-dust {
+  0%   { opacity: 0;    transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 5px), 0, 0) scale(0.4, 0.55); }
+  32%  { opacity: 0.48; transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 14px), -2px, 0) scale(0.95, 0.9); }
+  100% { opacity: 0;    transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 23px), -5px, 0) scale(1.2, 0.65); }
+}
+
+@keyframes t3x-pet-fx-sub-greet {
+  0%   { opacity: 0;    transform: translate3d(-50%, 5px, 0) scale(0.38); }
+  30%  { opacity: 1;    transform: translate3d(-50%, -4px, 0) scale(1.06) rotate(calc(var(--t3x-toward) * 6deg)); }
+  70%  { opacity: 0.82; transform: translate3d(-50%, -8px, 0) scale(1.12) rotate(calc(var(--t3x-toward) * -4deg)); }
+  100% { opacity: 0;    transform: translate3d(-50%, -12px, 0) scale(1.18); }
+}
+
+@keyframes t3x-pet-fx-sub-hf-ring {
+  0%   { opacity: 0;    transform: translate3d(-50%, -50%, 0) scale(0.28); }
+  34%  { opacity: 0.96; transform: translate3d(-50%, -50%, 0) scale(0.94); }
+  100% { opacity: 0;    transform: translate3d(-50%, -50%, 0) scale(1.4); }
+}
+
+@keyframes t3x-pet-fx-sub-hf-sparks {
+  0%   { opacity: 0;    transform: translate3d(-50%, -50%, 0) scale(0.32) rotate(0deg); }
+  32%  { opacity: 1;    transform: translate3d(-50%, -50%, 0) scale(0.98) rotate(calc(var(--t3x-toward) * 8deg)); }
+  72%  { opacity: 0.68; transform: translate3d(-50%, -52%, 0) scale(1.2) rotate(calc(var(--t3x-toward) * 14deg)); }
+  100% { opacity: 0;    transform: translate3d(-50%, -55%, 0) scale(1.32) rotate(calc(var(--t3x-toward) * 18deg)); }
+}
+
+@keyframes t3x-pet-fx-sub-cloud {
+  0%   { opacity: 0;    transform: translate3d(-50%, 4px, 0) scale(0.62); }
+  32%  { opacity: 0.86; transform: translate3d(-50%, -2px, 0) scale(1.04); }
+  68%  { opacity: 0.78; transform: translate3d(calc(-50% + var(--t3x-toward) * -2px), -1px, 0) scale(1); }
+  100% { opacity: 0.72; transform: translate3d(-50%, 0, 0) scale(1); }
+}
+
+@keyframes t3x-pet-fx-sub-sweat {
+  0%   { opacity: 0;    transform: translate3d(-50%, -2px, 0) scale(0.5); }
+  26%  { opacity: 0.96; transform: translate3d(-50%, 1px, 0) scale(1); }
+  72%  { opacity: 0.82; transform: translate3d(-50%, 6px, 0) scale(0.95, 1.08); }
+  100% { opacity: 0;    transform: translate3d(-50%, 10px, 0) scale(0.75, 1.15); }
+}
+
+@keyframes t3x-pet-badge-pop {
+  0%   { opacity: 0; transform: translate3d(0, 4px, 0) scale(0.58); }
+  58%  { opacity: 1; transform: translate3d(0, -1px, 0) scale(1.12); }
+  82%  { opacity: 1; transform: translate3d(0, 0, 0) scale(0.97); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* ==========================================================================
+   Reduced Motion Fallback（150ms 纯透明度/去饱和，animation-name 前缀 t3x-pet-reduced-）
+   ========================================================================== */
+
+@keyframes t3x-pet-reduced-droop {
+  from { opacity: 1;    filter: saturate(1); }
+  to   { opacity: 0.78; filter: saturate(0.58); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t3x-pet[data-role="sub"][data-motion="sub-run"] .t3x-pet-body,
+  .t3x-pet[data-role="sub"][data-motion="sub-run"] .t3x-pet-shadow,
+  .t3x-pet[data-role="sub"][data-motion="greet"] .t3x-pet-shadow,
+  .t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-shadow,
+  .t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-shadow {
+    animation: none;
+  }
+
+  .t3x-pet[data-role="sub"][data-motion="sub-seat"] .t3x-pet-body,
+  .t3x-pet[data-role="sub"][data-motion="sub-seat"] .t3x-pet-shadow,
+  .t3x-pet-badge {
+    animation: t3x-pet-reduced-in 150ms ease-out both;
+  }
+
+  .t3x-pet[data-role="sub"][data-motion="greet"] .t3x-pet-body,
+  .t3x-pet[data-role="sub"][data-motion="highfive"] .t3x-pet-body {
+    animation: t3x-pet-reduced-pulse 150ms ease-out both;
+  }
+
+  .t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-body {
+    animation: t3x-pet-reduced-droop 150ms ease-out both;
+  }
+}

@@ -1,0 +1,85 @@
+/* 桌宠设置面板 */
+.t3x-pet-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+.t3x-pet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+.t3x-pet-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px 16px;
+}
+.t3x-pet-map-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.t3x-pet-input {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--input, var(--border));
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+}
+.t3x-pet-num {
+  width: 72px;
+}
+.t3x-pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+}
+.t3x-pet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+}
+/* 缩略图取精灵图第一帧（待机）：8 列 x 11 行，左上角那格 */
+.t3x-pet-thumb {
+  width: 64px;
+  height: 69px;
+  background-size: 800% 1100%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.t3x-pet-thumb[data-smooth] {
+  image-rendering: auto;
+}
+.t3x-pet-name {
+  font-weight: 600;
+}
+.t3x-pet-actions {
+  display: flex;
+  gap: 4px;
+}
+.t3x-pet-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+}
+.t3x-pet-form label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}

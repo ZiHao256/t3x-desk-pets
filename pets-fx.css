@@ -1,0 +1,298 @@
+/* t3code-enhancer 桌宠：特效关键帧与减弱动态效果回退。按 pets.css → pets-keyframes.css → pets-fx.css → pets-subagents.css 的顺序拼接注入。 */
+/* ==========================================================================
+   Keyframes · FX（无硬边瞬移光束 / 粒子爆散 / 落地微尘 / 雀跃微光）
+   ========================================================================== */
+
+@keyframes t3x-pet-fx-blink-in-beam {
+  0% {
+    opacity: 0.95;
+    transform: translate3d(-50%, -8px, 0) scale(0.24, 1.24);
+  }
+  26% {
+    opacity: 1;
+    transform: translate3d(-50%, -2px, 0) scale(1.04, 1.02);
+  }
+  62% {
+    opacity: 0.22;
+    transform: translate3d(-50%, 0, 0) scale(1.26, 0.86);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0) scale(1.38, 0.72);
+  }
+}
+
+@keyframes t3x-pet-fx-blink-in-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.32);
+  }
+  24% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(0.88);
+  }
+  72% {
+    opacity: 0.56;
+    transform: translate3d(-50%, -54%, 0) scale(1.24);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -58%, 0) scale(1.4);
+  }
+}
+
+@keyframes t3x-pet-fx-blink-out-beam {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0) scale(0.58, 0.72);
+  }
+  28% {
+    opacity: 0.74;
+    transform: translate3d(-50%, -2px, 0) scale(1.02, 0.96);
+  }
+  56% {
+    opacity: 1;
+    transform: translate3d(-50%, -6px, 0) scale(0.46, 1.18);
+  }
+  84% {
+    opacity: 0.54;
+    transform: translate3d(-50%, -14px, 0) scale(0.14, 1.44);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -18px, 0) scale(0.08, 1.5);
+  }
+}
+
+@keyframes t3x-pet-fx-blink-out-burst {
+  0%, 26% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.42);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(-50%, -54%, 0) scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -64%, 0) scale(1.32);
+  }
+}
+
+@keyframes t3x-pet-fx-dust-left {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-50% - 4px), 0, 0) scale(0.42, 0.6);
+  }
+  26% {
+    opacity: 0.62;
+    transform: translate3d(calc(-50% - 13px), -2px, 0) scale(1, 0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% - 22px), -4px, 0) scale(1.25, 0.65);
+  }
+}
+
+@keyframes t3x-pet-fx-dust-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + 4px), 0, 0) scale(0.42, 0.6);
+  }
+  26% {
+    opacity: 0.62;
+    transform: translate3d(calc(-50% + 13px), -2px, 0) scale(1, 0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + 22px), -4px, 0) scale(1.25, 0.65);
+  }
+}
+
+@keyframes t3x-pet-fx-run-puff {
+  0% {
+    opacity: 0;
+    transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 6px), 0, 0) scale(0.45, 0.6);
+  }
+  28% {
+    opacity: 0.62;
+    transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 16px), -3px, 0) scale(1, 0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% - var(--t3x-pet-lean-dir) * 26px), -6px, 0) scale(1.28, 0.72);
+  }
+}
+
+/* 戳跳微光：精准卡位在 46% 跳顶时刻（约 145ms）绽放并上浮消散 */
+@keyframes t3x-pet-fx-poke-spark {
+  0%, 16% {
+    opacity: 0;
+    transform: translate3d(-50%, 6px, 0) scale(0.46);
+  }
+  44% {
+    opacity: 1;
+    transform: translate3d(-50%, -6px, 0) scale(1.04);
+  }
+  72% {
+    opacity: 0.68;
+    transform: translate3d(-50%, -11px, 0) scale(1.16);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -15px, 0) scale(1.24);
+  }
+}
+
+/* 双宠互动像素感叹号：清脆弹出、微微停顿后上浮淡出 */
+@keyframes t3x-pet-fx-bump-exclaim {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 6px, 0) scale(0.35);
+  }
+  26% {
+    opacity: 1;
+    transform: translate3d(-50%, -5px, 0) scale(1.16) rotate(calc(var(--t3x-toward) * -4deg));
+  }
+  48% {
+    opacity: 1;
+    transform: translate3d(-50%, -4px, 0) scale(0.98) rotate(calc(var(--t3x-toward) * 2deg));
+  }
+  76% {
+    opacity: 0.92;
+    transform: translate3d(-50%, -7px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -12px, 0) scale(0.92);
+  }
+}
+
+@keyframes t3x-pet-fx-bump-ring {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.28);
+  }
+  34% {
+    opacity: 0.96;
+    transform: translate3d(-50%, -50%, 0) scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(1.42);
+  }
+}
+
+@keyframes t3x-pet-fx-bump-sparks {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.32) rotate(0deg);
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1) rotate(calc(var(--t3x-toward) * 8deg));
+  }
+  72% {
+    opacity: 0.68;
+    transform: translate3d(-50%, -52%, 0) scale(1.22) rotate(calc(var(--t3x-toward) * 14deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -56%, 0) scale(1.34) rotate(calc(var(--t3x-toward) * 18deg));
+  }
+}
+
+@keyframes t3x-pet-fx-bump-stars {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 5px, 0) scale(0.38);
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(-50%, -4px, 0) scale(1.06) rotate(calc(var(--t3x-toward) * 6deg));
+  }
+  72% {
+    opacity: 0.78;
+    transform: translate3d(-50%, -8px, 0) scale(1.12) rotate(calc(var(--t3x-toward) * -4deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, -12px, 0) scale(1.18);
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Fallback
+   保持 150ms 仅透明度动画（无 transform、无闪光），确保 JS 仍能正常收到 animationend
+   ========================================================================== */
+
+@keyframes t3x-pet-reduced-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes t3x-pet-reduced-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes t3x-pet-reduced-pulse {
+  0%   { opacity: 0.78; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t3x-pet-body,
+  .t3x-pet-shadow {
+    transition: opacity 150ms ease-out;
+  }
+
+  .t3x-pet[data-motion="enter-jump"] .t3x-pet-body,
+  .t3x-pet[data-motion="enter-blink"] .t3x-pet-body {
+    animation: t3x-pet-reduced-in 150ms ease-out both;
+  }
+
+  .t3x-pet[data-motion="exit-run"] .t3x-pet-body,
+  .t3x-pet[data-motion="exit-blink"] .t3x-pet-body {
+    animation: t3x-pet-reduced-out 150ms ease-out both;
+  }
+
+  .t3x-pet[data-motion="drop"] .t3x-pet-body,
+  .t3x-pet[data-motion="poke"] .t3x-pet-body,
+  .t3x-pet[data-motion="bump"] .t3x-pet-body {
+    animation: t3x-pet-reduced-pulse 150ms ease-out both;
+  }
+
+  .t3x-pet[data-motion="drag"] .t3x-pet-body {
+    transform: none;
+    opacity: 0.92;
+  }
+
+  .t3x-pet[data-motion="enter-jump"] .t3x-pet-shadow,
+  .t3x-pet[data-motion="enter-blink"] .t3x-pet-shadow {
+    animation: t3x-pet-reduced-in 150ms ease-out both;
+  }
+
+  .t3x-pet[data-motion="exit-run"] .t3x-pet-shadow,
+  .t3x-pet[data-motion="exit-blink"] .t3x-pet-shadow {
+    animation: t3x-pet-reduced-out 150ms ease-out both;
+  }
+
+  .t3x-pet[data-motion="drop"] .t3x-pet-shadow,
+  .t3x-pet[data-motion="poke"] .t3x-pet-shadow,
+  .t3x-pet[data-motion="bump"] .t3x-pet-shadow {
+    animation: none;
+  }
+
+  .t3x-pet[data-motion="drag"] .t3x-pet-shadow {
+    transform: translate3d(-50%, 0, 0);
+    opacity: 0.65;
+  }
+
+  .t3x-pet-fx,
+  .t3x-pet-fx::before,
+  .t3x-pet-fx::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}

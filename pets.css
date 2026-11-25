@@ -1,0 +1,482 @@
+/* ==========================================================================
+   t3code-enhancer · Desktop Pets Motion & Visual Layer (.t3x-pet-*)
+   宿位于 [data-slot="composer-host"] 顶部边缘；所有动效仅驱动 transform / opacity
+   绝不动画 left，绝不覆写 .t3x-pet-sprite 的 background-* 属性
+   ========================================================================== */
+
+/* 舞台容器：贴齐输入卡片顶边，高度为 0 且不拦截交互，层级高于卡片描边但低于弹层 */
+.t3x-pet-stage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* 单个宠物根容器：由 JS 通过 inline left 定位，本身不做位移变换以免干扰拖拽坐标 */
+.t3x-pet {
+  --t3x-pet-w: 64px;
+  --t3x-pet-h: calc(var(--t3x-pet-w) * 208 / 192);
+  /* 192x208 精灵底部透明留白因角色不同（默认按约 3.8% 校准，其他宠物在 pet 定义里覆盖），
+     通过每角色下沉量让双脚统一稳踩并微压卡片顶边约 2px */
+  --t3x-pet-sink: calc(var(--t3x-pet-w) * 0.075);
+  --t3x-pet-shadow-bottom: calc(var(--t3x-pet-w) * 0.025);
+  /* 挤压拉伸锚定在双脚落点，保证落地压扁与起跳拉伸绝不离地漂移 */
+  --t3x-pet-origin-y: 96%;
+  /* 朝向系数：仅用于奔跑前倾与戳跳微歪，绝不水平镜像精灵图 */
+  --t3x-pet-lean-dir: 1;
+  --t3x-toward: 1; /* 互动时指向对方的方向：left 侧朝右(+1)，right 侧朝左(-1) */
+  /* 阻尼弹簧曲线：k=1450, c=49.5, m=1（ζ=0.65，超调 6.8%，240ms 收敛），用于拎起手感 */
+  --t3x-pet-spring-pick: linear(
+    0, 0.085 5%, 0.2736 10%, 0.4901 15%, 0.6885 20%, 0.8462 25%,
+    0.9571 30%, 1.025 35%, 1.0586 40%, 1.0681 45%, 1.0628 50%,
+    1.0501 55%, 1.0354 60%, 1.0218 65%, 1.0109 70%, 1.0032 75%,
+    0.9985 80%, 0.9961 85%, 0.9954 90%, 0.9957 95%, 1
+  );
+
+  /* 浅色模式接触影与落地微尘 */
+  --t3x-pet-shadow-core: rgba(15, 23, 42, 0.24);
+  --t3x-pet-shadow-mid: rgba(15, 23, 42, 0.08);
+  --t3x-pet-dust: rgba(100, 116, 139, 0.36);
+
+  /* 特效几何默认值，矮胖的宠物在 pet 定义里覆盖 */
+  --t3x-pet-fx-beam-h: 112%;
+  --t3x-pet-fx-beam-b: 4%;
+  --t3x-pet-fx-burst-top: 48%;
+  --t3x-pet-fx-poke-top: -24%;
+
+  /* 默认蓝色配色（#5b7cff），纯径向渐变柔边消隐，杜绝矩形光框硬边 */
+  --t3x-pet-fx-beam:
+    radial-gradient(ellipse 10% 42% at 50% 52%, #e8efff 0%, #89a4ff 38%, transparent 72%),
+    radial-gradient(ellipse 30% 40% at 50% 54%, rgba(91, 124, 255, 0.82) 0%, rgba(91, 124, 255, 0.26) 48%, transparent 72%),
+    radial-gradient(ellipse 44% 34% at 50% 56%, rgba(91, 124, 255, 0.2) 0%, transparent 70%);
+  /* 浅色背景采用高饱和实心星点，避免白心在白底上显得空洞 */
+  --t3x-pet-fx-sparks:
+    radial-gradient(circle, #4868f5 0 1.7px, rgba(91, 124, 255, 0.45) 2.6px, transparent 3.4px) 18% 24% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.4px, rgba(137, 164, 255, 0.45) 2.3px, transparent 3.1px) 84% 20% / 7px 7px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.8px, rgba(91, 124, 255, 0.45) 2.7px, transparent 3.6px) 12% 62% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.4px, rgba(91, 124, 255, 0.4) 2.2px, transparent 3px) 88% 58% / 7px 7px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.3px, rgba(91, 124, 255, 0.36) 2.1px, transparent 2.9px) 32% 84% / 6px 6px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.3px, rgba(91, 124, 255, 0.36) 2.1px, transparent 2.9px) 72% 82% / 6px 6px no-repeat;
+  --t3x-pet-fx-poke-sparks:
+    radial-gradient(circle, #4868f5 0 1.6px, rgba(91, 124, 255, 0.42) 2.5px, transparent 3.3px) 24% 62% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.9px, rgba(137, 164, 255, 0.46) 2.8px, transparent 3.6px) 50% 24% / 9px 9px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.5px, rgba(91, 124, 255, 0.42) 2.4px, transparent 3.2px) 76% 58% / 8px 8px no-repeat;
+  /* 双宠碰头互动：像素感叹号与默认蓝色光环/火花（宠物自定义变量优先） */
+  --t3x-pet-fx-exclaim:
+    linear-gradient(#ff9b8a, #ff9b8a) 50% 2px / 3px 2px no-repeat,
+    linear-gradient(#e5484d, #e5484d) 50% 4px / 3px 7px no-repeat,
+    linear-gradient(#e5484d, #e5484d) 50% 14px / 3px 3px no-repeat;
+  --t3x-pet-fx-bump-ring:
+    radial-gradient(circle, transparent 36%, rgba(91, 124, 255, 0.84) 53%, rgba(137, 164, 255, 0.28) 66%, transparent 76%);
+  --t3x-pet-fx-bump-sparks:
+    radial-gradient(circle, #4868f5 0 1.8px, rgba(91, 124, 255, 0.44) 2.8px, transparent 3.6px) 50% 8% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.7px, rgba(137, 164, 255, 0.44) 2.6px, transparent 3.4px) 86% 28% / 8px 8px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.7px, rgba(91, 124, 255, 0.42) 2.5px, transparent 3.3px) 84% 74% / 8px 8px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.6px, rgba(91, 124, 255, 0.4) 2.4px, transparent 3.2px) 50% 92% / 8px 8px no-repeat,
+    radial-gradient(circle, #4868f5 0 1.7px, rgba(91, 124, 255, 0.42) 2.5px, transparent 3.3px) 14% 72% / 8px 8px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.7px, rgba(137, 164, 255, 0.44) 2.6px, transparent 3.4px) 16% 26% / 8px 8px no-repeat;
+  --t3x-pet-fx-bump-stars:
+    radial-gradient(ellipse 46% 12% at 46% 48%, #4868f5 0%, rgba(91, 124, 255, 0.45) 55%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(ellipse 12% 46% at 46% 48%, #4868f5 0%, rgba(91, 124, 255, 0.45) 55%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(circle, #5b7cff 0 1.6px, rgba(91, 124, 255, 0.35) 2.5px, transparent 3.4px) 16% 68% / 8px 8px no-repeat,
+    radial-gradient(circle, #6d8cff 0 1.5px, rgba(137, 164, 255, 0.38) 2.4px, transparent 3.2px) 84% 26% / 7px 7px no-repeat;
+
+  position: absolute;
+  bottom: calc(var(--t3x-pet-sink) * -1);
+  /* 按角色缩放（scale 属性）以脚底线为原点，和子宠物的 transform 缩放相乘 */
+  transform-origin: 50% calc(100% - var(--t3x-pet-sink));
+  width: var(--t3x-pet-w);
+  height: var(--t3x-pet-h);
+  z-index: 2;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+  outline: none;
+}
+
+.t3x-pet:focus,
+.t3x-pet:focus-visible {
+  outline: none;
+}
+
+.t3x-pet[data-facing="left"] {
+  --t3x-pet-lean-dir: -1;
+}
+
+.t3x-pet[data-side="left"] {
+  --t3x-toward: 1;
+}
+
+.t3x-pet[data-side="right"] {
+  --t3x-toward: -1;
+}
+
+/* 切换共存时层级秩序：退场居底、静息居中、进场居上、拖拽置顶；退场态不再响应点击 */
+.t3x-pet[data-motion="exit-run"],
+.t3x-pet[data-motion="exit-blink"] {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.t3x-pet[data-motion="enter-jump"],
+.t3x-pet[data-motion="enter-blink"] {
+  z-index: 3;
+}
+
+.t3x-pet[data-motion="drag"] {
+  z-index: 4;
+  cursor: grabbing;
+}
+
+.t3x-pet[data-motion="bump"] {
+  z-index: 4;
+}
+
+/* 深色模式：加深接触影，星点使用亮白星核 + 主题色外晕增强夜幕通透感 */
+html.dark .t3x-pet {
+  --t3x-pet-shadow-core: rgba(0, 0, 0, 0.58);
+  --t3x-pet-shadow-mid: rgba(0, 0, 0, 0.22);
+  --t3x-pet-dust: rgba(203, 213, 225, 0.34);
+  --t3x-pet-fx-beam:
+    radial-gradient(ellipse 10% 44% at 50% 52%, #ffffff 0%, #bfd0ff 36%, transparent 72%),
+    radial-gradient(ellipse 30% 42% at 50% 54%, rgba(91, 124, 255, 0.92) 0%, rgba(91, 124, 255, 0.32) 48%, transparent 72%),
+    radial-gradient(ellipse 46% 36% at 50% 56%, rgba(91, 124, 255, 0.26) 0%, transparent 70%);
+  --t3x-pet-fx-sparks:
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.5px) 18% 24% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.1px, #a9bfff 2.2px, transparent 3.2px) 84% 20% / 7px 7px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.3px, #5b7cff 2.6px, transparent 3.6px) 12% 62% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.1px, #5b7cff 2.2px, transparent 3.2px) 88% 58% / 7px 7px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1px, #5b7cff 2px, transparent 3px) 32% 84% / 6px 6px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1px, #5b7cff 2px, transparent 3px) 72% 82% / 6px 6px no-repeat;
+  --t3x-pet-fx-poke-sparks:
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.4px) 24% 62% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.4px, #a9bfff 2.7px, transparent 3.7px) 50% 24% / 9px 9px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.1px, #5b7cff 2.3px, transparent 3.3px) 76% 58% / 8px 8px no-repeat;
+  --t3x-pet-fx-exclaim:
+    linear-gradient(#ffd4c8, #ffd4c8) 50% 2px / 3px 2px no-repeat,
+    linear-gradient(#ff5c57, #ff5c57) 50% 4px / 3px 7px no-repeat,
+    linear-gradient(#ff5c57, #ff5c57) 50% 14px / 3px 3px no-repeat;
+  --t3x-pet-fx-bump-ring:
+    radial-gradient(circle, transparent 36%, rgba(186, 205, 255, 0.94) 52%, rgba(91, 124, 255, 0.38) 66%, transparent 76%);
+  --t3x-pet-fx-bump-sparks:
+    radial-gradient(circle, #ffffff 0 1.3px, #5b7cff 2.6px, transparent 3.7px) 50% 8% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.3px, #a9bfff 2.5px, transparent 3.5px) 86% 28% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.4px) 84% 74% / 8px 8px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1.1px, #5b7cff 2.2px, transparent 3.2px) 50% 92% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.4px) 14% 72% / 8px 8px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.3px, #a9bfff 2.5px, transparent 3.5px) 16% 26% / 8px 8px no-repeat;
+  --t3x-pet-fx-bump-stars:
+    radial-gradient(ellipse 46% 12% at 46% 48%, #ffffff 0%, #89a4ff 48%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(ellipse 12% 46% at 46% 48%, #ffffff 0%, #89a4ff 48%, transparent 78%) 46% 48% / 14px 14px no-repeat,
+    radial-gradient(circle, #ffffff 0 1.2px, #5b7cff 2.4px, transparent 3.5px) 16% 68% / 8px 8px no-repeat,
+    radial-gradient(circle, #dbe5ff 0 1.1px, #5b7cff 2.2px, transparent 3.2px) 84% 26% / 7px 7px no-repeat;
+}
+
+/* ---------- 每只宠物的落地校准、主题色与粒子风格 ----------
+   不写在这里：web.js 按 pet 定义里的 vars / darkVars 生成 .t3x-pet[data-pet="…"] 规则。 */
+.t3x-pet {
+  scale: var(--t3x-pet-scale, 1);
+}
+
+/* 非像素画宠物（pet 定义 smooth: true）用平滑缩放 */
+.t3x-pet[data-smooth] .t3x-pet-sprite {
+  image-rendering: auto;
+}
+
+/* pixelFx：瞬移、戳一下、打招呼、击掌、双宠互动的粒子用硬边像素方块 */
+.t3x-pet[data-pixel-fx][data-motion="enter-blink"] .t3x-pet-fx::after,
+.t3x-pet[data-pixel-fx][data-motion="exit-blink"] .t3x-pet-fx::after,
+.t3x-pet[data-pixel-fx][data-motion="poke"] .t3x-pet-fx::after,
+.t3x-pet[data-pixel-fx][data-motion="bump"] .t3x-pet-fx::after,
+.t3x-pet[data-pixel-fx][data-role="sub"][data-motion="greet"] .t3x-pet-fx::after,
+.t3x-pet[data-pixel-fx][data-role="sub"][data-motion="highfive"] .t3x-pet-fx::after {
+  image-rendering: pixelated;
+}
+
+/* ---------- 结构子层：阴影 / 机身 / 精灵 / 特效 ---------- */
+
+/* 接触影：贴合各角色双脚底线，仅通过 transform / opacity 随高度缩放 */
+.t3x-pet-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: var(--t3x-pet-shadow-bottom);
+  width: calc(var(--t3x-pet-w) * 0.56);
+  height: calc(var(--t3x-pet-w) * 0.11);
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    var(--t3x-pet-shadow-core) 0%,
+    var(--t3x-pet-shadow-mid) 52%,
+    transparent 74%
+  );
+  transform: translate3d(-50%, 0, 0);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease-out;
+  will-change: transform, opacity;
+}
+
+/* 机身承载层：transform-origin 锚定在双脚落点，挤压拉伸绝不离地 */
+.t3x-pet-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: translate3d(0, 0, 0);
+  transform-origin: 50% var(--t3x-pet-origin-y);
+  transition:
+    transform 240ms var(--t3x-pet-spring-pick),
+    opacity 160ms ease-out;
+  will-change: transform, opacity;
+}
+
+/* 精灵层：绝不设任何 background-* 规则，由 JS 逐帧更新 background-position */
+.t3x-pet-sprite {
+  width: 100%;
+  height: 100%;
+  /* 三只宠物都是像素画 */
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* 特效层：与 .t3x-pet-body 同级，避免 animationend 冒泡干扰控制器监听 */
+.t3x-pet-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.t3x-pet-fx::before,
+.t3x-pet-fx::after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================================
+   动作状态映射（所有一次性动画名均以 t3x-pet- 开头，时长 < 800ms）
+   ========================================================================== */
+
+/* 1. enter-jump（660ms）：自右侧上方 ~48px 抛物线跃入，落地挤压回弹 + 影随形长 + 落地微尘 */
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-body {
+  animation: t3x-pet-enter-jump 660ms linear both;
+}
+
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-enter-jump 660ms linear both;
+}
+
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-fx::before,
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-fx::after {
+  left: 50%;
+  bottom: calc(var(--t3x-pet-shadow-bottom) + 1px);
+  width: calc(var(--t3x-pet-w) * 0.24);
+  height: calc(var(--t3x-pet-w) * 0.11);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, var(--t3x-pet-dust) 0%, transparent 72%);
+}
+
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-fx::before {
+  animation: t3x-pet-fx-dust-left 270ms cubic-bezier(0.22, 1, 0.36, 1) 355ms both;
+}
+
+.t3x-pet[data-motion="enter-jump"] .t3x-pet-fx::after {
+  animation: t3x-pet-fx-dust-right 270ms cubic-bezier(0.22, 1, 0.36, 1) 355ms both;
+}
+
+/* 2. enter-blink（400ms）：无边界主题光束闪现 + 细光片弹开成型 + 角色粒子爆散 */
+.t3x-pet[data-motion="enter-blink"] .t3x-pet-body {
+  animation: t3x-pet-enter-blink 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="enter-blink"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-enter-blink 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="enter-blink"] .t3x-pet-fx::before {
+  left: 50%;
+  bottom: var(--t3x-pet-fx-beam-b);
+  width: 96%;
+  height: var(--t3x-pet-fx-beam-h);
+  background: var(--t3x-pet-fx-beam);
+  transform-origin: 50% 94%;
+  /* 光束在 280ms 内快速消散，确保角色弹开瞬间面部清晰通透 */
+  animation: t3x-pet-fx-blink-in-beam 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.t3x-pet[data-motion="enter-blink"] .t3x-pet-fx::after {
+  left: 50%;
+  top: var(--t3x-pet-fx-burst-top);
+  width: 146%;
+  height: 124%;
+  background: var(--t3x-pet-fx-sparks);
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-blink-in-burst 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 3. exit-run（480ms）：配合精灵奔跑行前倾加速跑出 --t3x-run-dx 并淡出，脚后跟扬起小尘 */
+.t3x-pet[data-motion="exit-run"] .t3x-pet-body {
+  animation: t3x-pet-exit-run 480ms linear both;
+}
+
+.t3x-pet[data-motion="exit-run"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-exit-run 480ms linear both;
+}
+
+.t3x-pet[data-motion="exit-run"] .t3x-pet-fx::before {
+  left: 50%;
+  bottom: calc(var(--t3x-pet-shadow-bottom) + 1px);
+  width: calc(var(--t3x-pet-w) * 0.28);
+  height: calc(var(--t3x-pet-w) * 0.14);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, var(--t3x-pet-dust) 0%, transparent 72%);
+  animation: t3x-pet-fx-run-puff 320ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+}
+
+/* 4. exit-blink（300ms）：短暂预压后向上坍缩成主题色光针并爆散消失 */
+.t3x-pet[data-motion="exit-blink"] .t3x-pet-body {
+  animation: t3x-pet-exit-blink 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.t3x-pet[data-motion="exit-blink"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-exit-blink 260ms ease-in both;
+}
+
+.t3x-pet[data-motion="exit-blink"] .t3x-pet-fx::before {
+  left: 50%;
+  bottom: var(--t3x-pet-fx-beam-b);
+  width: 96%;
+  height: var(--t3x-pet-fx-beam-h);
+  background: var(--t3x-pet-fx-beam);
+  transform-origin: 50% 94%;
+  animation: t3x-pet-fx-blink-out-beam 290ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="exit-blink"] .t3x-pet-fx::after {
+  left: 50%;
+  top: var(--t3x-pet-fx-burst-top);
+  width: 138%;
+  height: 118%;
+  background: var(--t3x-pet-fx-sparks);
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-blink-out-burst 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 5. drag（无 keyframes）：弹性提起 -6.5px 并略放大，影缩小变浅 */
+.t3x-pet[data-motion="drag"] .t3x-pet-body {
+  transform: translate3d(0, -6.5px, 0) scale(1.06);
+}
+
+.t3x-pet[data-motion="drag"] .t3x-pet-shadow {
+  transform: translate3d(-50%, 0, 0) scale(0.68, 0.72);
+  opacity: 0.38;
+}
+
+/* 6. drop（260ms）：自拖拽高度回落触地挤压并轻弹稳定 */
+.t3x-pet[data-motion="drop"] .t3x-pet-body {
+  animation: t3x-pet-drop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="drop"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-drop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="drop"] .t3x-pet-fx::before,
+.t3x-pet[data-motion="drop"] .t3x-pet-fx::after {
+  left: 50%;
+  bottom: calc(var(--t3x-pet-shadow-bottom) + 1px);
+  width: calc(var(--t3x-pet-w) * 0.2);
+  height: calc(var(--t3x-pet-w) * 0.09);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, var(--t3x-pet-dust) 0%, transparent 72%);
+}
+
+.t3x-pet[data-motion="drop"] .t3x-pet-fx::before {
+  animation: t3x-pet-fx-dust-left 190ms cubic-bezier(0.22, 1, 0.36, 1) 55ms both;
+}
+
+.t3x-pet[data-motion="drop"] .t3x-pet-fx::after {
+  animation: t3x-pet-fx-dust-right 190ms cubic-bezier(0.22, 1, 0.36, 1) 55ms both;
+}
+
+/* 7. poke（320ms）：点击后的雀跃小跳，跳至最高点时头顶迸发三点主题微光 */
+.t3x-pet[data-motion="poke"] .t3x-pet-body {
+  animation: t3x-pet-poke 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="poke"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-poke 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="poke"] .t3x-pet-fx::after {
+  left: 50%;
+  top: var(--t3x-pet-fx-poke-top);
+  width: 90%;
+  height: 46%;
+  background: var(--t3x-pet-fx-poke-sparks);
+  transform-origin: 50% 80%;
+  animation: t3x-pet-fx-poke-spark 310ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 8. bump（600ms）：双宠凑近碰头互动，一侧冒像素感叹号+接触火花，另一侧冒冲击环+星芒 */
+.t3x-pet[data-motion="bump"] .t3x-pet-body {
+  animation: t3x-pet-bump 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="bump"] .t3x-pet-shadow {
+  animation: t3x-pet-shadow-bump 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.t3x-pet[data-motion="bump"][data-bump="exclaim"] .t3x-pet-fx::before {
+  left: calc(50% + var(--t3x-toward) * 12%);
+  top: calc(var(--t3x-sub-greet-top, -15%) - 10px);
+  width: 11px;
+  height: 19px;
+  background: var(--t3x-pet-fx-exclaim);
+  image-rendering: pixelated;
+  transform-origin: 50% 85%;
+  animation: t3x-pet-fx-bump-exclaim 540ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
+}
+
+.t3x-pet[data-motion="bump"][data-bump="exclaim"] .t3x-pet-fx::after {
+  left: calc(50% + var(--t3x-toward) * 44%);
+  top: var(--t3x-sub-highfive-top, 22%);
+  width: 42px;
+  height: 42px;
+  background: var(--t3x-sub-hf-sparks, var(--t3x-pet-fx-bump-sparks));
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-bump-sparks 320ms cubic-bezier(0.16, 1, 0.3, 1) 135ms both;
+}
+
+.t3x-pet[data-motion="bump"][data-bump="spark"] .t3x-pet-fx::before {
+  left: calc(50% + var(--t3x-toward) * 44%);
+  top: var(--t3x-sub-highfive-top, 22%);
+  width: 28px;
+  height: 28px;
+  background: var(--t3x-sub-hf-ring, var(--t3x-pet-fx-bump-ring));
+  transform-origin: 50% 50%;
+  animation: t3x-pet-fx-bump-ring 270ms cubic-bezier(0.16, 1, 0.3, 1) 135ms both;
+}
+
+.t3x-pet[data-motion="bump"][data-bump="spark"] .t3x-pet-fx::after {
+  left: calc(50% + var(--t3x-toward) * 28%);
+  top: var(--t3x-sub-greet-top, -15%);
+  width: 28px;
+  height: 22px;
+  background: var(--t3x-sub-greet-fx, var(--t3x-pet-fx-bump-stars));
+  transform-origin: 50% 80%;
+  animation: t3x-pet-fx-bump-stars 420ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+}
+
+/* 9. idle：完全静息，交由精灵逐帧动画表达生命力 */

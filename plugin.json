@@ -1,0 +1,17 @@
+{
+  "id": "desk-pets",
+  "apiVersion": 1,
+  "name": "桌宠",
+  "version": "1.0.0",
+  "description": "输入框上沿站着当前 agent 的像素宠物，跟着会话状态动；子代理各派一只到旁边干活。每个 agent 用哪只、宠物库都能自己改。",
+  "author": "t3-extensions",
+  "repository": "https://github.com/ZiHao256/t3x-desk-pets",
+  "repositoryId": 1471215611,
+  "locales": { "en": { "name": "Desk pets", "description": "Pixel pets for the current agent stand on the composer and react to the thread state; each subagent sends its own pet to work alongside. Choose a pet per agent and edit the pet library." } },
+  "permissions": ["ui"],
+  "entries": {
+    "web": ["logic.js", "subpets.js", "controller.js", "settings.js", "web.js"],
+    "styles": ["pets.css", "pets-keyframes.css", "pets-fx.css", "pets-subagents.css", "settings.css"]
+  },
+  "assets": ["pets/codex/sheet.webp"]
+}
