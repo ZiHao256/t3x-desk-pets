@@ -255,7 +255,6 @@ function PetSettings({ ui }) {
   const list = [...pets.values()];
   const sourceLabels = {
     builtin: host.t("内置", "Built-in"),
-    local: host.t("本机", "Local"),
     custom: host.t("自定义", "Custom"),
   };
 
@@ -264,7 +263,7 @@ function PetSettings({ ui }) {
     if (!value) return;
     host.storage.set("map", { ...saved, [key]: value });
   };
-  // 默认对应的宠物不在库里（比如没有本机素材）时显示成“按模型名”，和实际行为一致；
+  // 默认对应的宠物不在库里时显示成“按模型名”，和实际行为一致；
   // "*" 没有“按模型名”选项，兜底回 codex（或库中第一只 / 不显示）。
   const shown = (key) => {
     const v = map[key];

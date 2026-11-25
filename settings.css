@@ -79,11 +79,6 @@ html.dark .t3x-pet-source {
   background: color-mix(in srgb, var(--primary, var(--foreground)) 10%, transparent);
   color: var(--foreground);
 }
-.t3x-pet-source-local {
-  border-color: color-mix(in srgb, var(--success, var(--muted-foreground)) 28%, transparent);
-  background: color-mix(in srgb, var(--success, var(--muted-foreground)) 10%, transparent);
-  color: var(--success-foreground, var(--success, var(--muted-foreground)));
-}
 .t3x-pet-stage-preview {
   display: flex;
   align-items: center;
