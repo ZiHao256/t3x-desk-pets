@@ -257,7 +257,6 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } 
     },
     hasFocus: () => focused,
     createElement: (tag) => new FakeEl(tag),
-    querySelectorAll: (sel) => (sel === '[data-slot="composer-host"]' ? [hostEl] : []),
     addEventListener: (t, fn) => addL(docListeners, t, fn),
     removeEventListener: (t, fn) => rmL(docListeners, t, fn),
   };
@@ -318,6 +317,7 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } 
     position: { get: () => posVal, set: (v) => (posVal = v) },
     quiet: () => false,
     onMenu: () => ctrl.hide(),
+    composer: () => hostEl,
   });
 
   const stage = () => hostEl.children.find((c) => c.className === "t3x-pet-stage") ?? null;
@@ -729,6 +729,8 @@ test("桌宠：卸载聊天视图期间改映射会使 seenSubs 失效", () => {
     style: () => () => {},
     onDispose() {},
     chat: { last: () => null },
+    dom: { composer: () => null, modelPicker: () => null },
+    confirm: async () => true,
   };
   const cleanup = vm.runInContext(
     `(function(host){"use strict";\n${code.replace('host.register("chat.overlay", PetsOverlay);', 'host.register("chat.overlay", PetsOverlay); globalThis.__ctrl = controller;')}\n})`,
@@ -750,6 +752,100 @@ test("桌宠：卸载聊天视图期间改映射会使 seenSubs 失效", () => {
   renderOverlay(props);
   assert.equal(dispatched.at(-1).events.length, 0, "改映射后重挂不应复用旧 seenSubs 发出 seat");
   cleanup();
+});
+
+test("桌宠设置：删除宠物要确认，确认期间这只被改过就不删", async () => {
+  const ext = readFiles();
+  const code = [].concat(ext.manifest.entries.web).map((p) => ext.files[p]).join("\n;\n");
+  const storage = new Map();
+  const subs = new Map();
+  const set = (k, v) => {
+    storage.set(k, v);
+    for (const fn of subs.get(k) ?? []) fn();
+  };
+  const petA = { id: "my-a", name: "A", sheet: "data:image/webp;base64,AAAA" };
+  let confirm = async () => true;
+  let Settings = null;
+  const hook = (v) => [typeof v === "function" ? v() : v, () => {}];
+  const hostObj = {
+    id: "desk-pets",
+    React: { useState: hook, useRef: (v) => ({ current: v }), useEffect() {}, useMemo: (fn) => fn(), useCallback: (fn) => fn, useReducer: () => [0, () => {}] },
+    h: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+    register() {},
+    settings: (c) => (Settings = c),
+    storage: {
+      get: (k, f) => (storage.has(k) ? storage.get(k) : f),
+      set,
+      subscribe: (k, fn) => {
+        if (!subs.has(k)) subs.set(k, new Set());
+        subs.get(k).add(fn);
+        return () => subs.get(k).delete(fn);
+      },
+      use: (k, f) => (storage.has(k) ? storage.get(k) : f),
+    },
+    files: { list: () => Object.keys(ext.files), text: (p) => ext.files[p], url: (p) => (ext.files[p]?.startsWith("data:") ? ext.files[p] : null) },
+    style: () => () => {},
+    onDispose() {},
+    chat: { last: () => null },
+    dom: { composer: () => null, modelPicker: () => null },
+    confirm: (...args) => confirm(...args),
+    contextMenu: async () => null,
+    openSettings() {},
+    lang: () => "zh",
+    useLang: () => "zh",
+    t: (zh) => zh,
+  };
+  const ctx = vm.createContext({
+    window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {}, dispatchEvent() {} },
+    document: { hidden: false, hasFocus: () => true, createElement: () => ({ dataset: {}, style: {}, setAttribute() {}, remove() {} }), querySelectorAll: () => [], addEventListener() {}, removeEventListener() {} },
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    setTimeout,
+    clearTimeout,
+    requestAnimationFrame: () => 0,
+    cancelAnimationFrame() {},
+    console,
+  });
+  const reset = () => {
+    set("custom", [petA]);
+    set("map", { codex: "my-a" });
+  };
+  reset();
+  vm.runInContext(`(function(host){"use strict";\n${code}\n})`, ctx)(hostObj);
+  const ui = new Proxy({}, { get: (_, name) => name });
+  const deleteButton = () => {
+    const found = [];
+    const walk = (n) => {
+      if (Array.isArray(n)) return n.forEach(walk);
+      if (!n || typeof n !== "object") return;
+      if (n.props?.className?.includes?.("t3x-btn-danger")) found.push(n);
+      for (const v of Object.values(n.props ?? {})) if (v && typeof v === "object") walk(v);
+      walk(n.children);
+    };
+    walk(Settings({ ui }));
+    assert.equal(found.length, 1, "只有自定义宠物有删除按钮");
+    return found[0].props.onClick;
+  };
+
+  confirm = async () => false;
+  await deleteButton()();
+  assert.equal(storage.get("custom").length, 1, "取消不删");
+
+  confirm = async () => {
+    throw new Error("确认框不可用");
+  };
+  await deleteButton()();
+  assert.equal(storage.get("custom").length, 1, "确认框出错不删，也不抛出未处理的 Promise");
+
+  confirm = async () => (set("custom", [{ ...petA, name: "A2" }]), true);
+  await deleteButton()();
+  assert.equal(storage.get("custom")[0]?.name, "A2", "确认期间被改过就不按旧的删");
+  assert.equal(storage.get("map").codex, "my-a");
+
+  reset();
+  confirm = async (message, options) => (assert.equal(options?.variant, "destructive"), true);
+  await deleteButton()();
+  assert.deepEqual(storage.get("custom"), []);
+  assert.equal(storage.get("map").codex, undefined, "引用它的对应关系一起删掉");
 });
 
 test("桌宠：导入的宠物定义要清洗", () => {

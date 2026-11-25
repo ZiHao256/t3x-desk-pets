@@ -1,7 +1,8 @@
 // 桌宠控制器：只操作 DOM，不依赖 React。宠物挂在主输入框上沿（side chat 里的输入框不挂）。
 // catalog.get(id) 给出宠物定义（sheet、badgeBottom 等），position 读写宠物在输入框上沿的位置比例。
 // quiet() 为真时宠物原地待着：不闲逛、不庆祝，子代理直接落座和离开；onMenu(ev) 处理右键宠物。
-function createPetController({ catalog, position, quiet, onMenu }) {
+// composer() 给出主输入框外壳（宿主的 host.dom.composer），没有时返回 null。
+function createPetController({ catalog, position, quiet, onMenu, composer }) {
   // 精灵图 8 列 x 11 行：行号 + 每帧时长（毫秒）。第 9、10 行是 16 个方向的看向帧。
   const ROWS = {
     idle: [0, [280, 110, 110, 140, 140, 320]],
@@ -39,7 +40,7 @@ function createPetController({ catalog, position, quiet, onMenu }) {
     const v = Number(position.get());
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.9;
   };
-  const findHost = () => [...document.querySelectorAll('[data-slot="composer-host"]')].find((h) => !h.closest("[data-side-chat-pane]")) || null;
+  const findHost = composer;
   const span = () => {
     const w = stage ? stage.clientWidth : 0;
     const petW = pet?.el.offsetWidth || 64; // 还没入场的宠物宽度是 0

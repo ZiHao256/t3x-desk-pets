@@ -10,9 +10,9 @@ An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensi
 
 ## Requirements / 依赖
 
-`apiVersion` 2: needs a T3 Code Extensions host that supports it. Older hosts refuse to install this version.
+`apiVersion` 3: needs a T3 Code Extensions host that supports it. Older hosts refuse to install this version.
 
-只依赖宿主提供的 `host` 接口（`apiVersion` 2），旧版宿主会拒绝安装。
+只依赖宿主提供的 `host` 接口（`apiVersion` 3），不直接读 T3 的页面结构，旧版宿主会拒绝安装。
 
 ## Development / 开发
 

@@ -251,6 +251,7 @@ function PetSettings({ ui }) {
   const saved = host.storage.use("map", {});
   host.storage.use("custom", []);
   const [editing, setEditing] = React.useState(null); // null | "new" | 宠物 id
+  const [removeError, setRemoveError] = React.useState(null);
   const map = { ...DEFAULT_MAP, ...saved };
   const list = [...pets.values()];
   const sourceLabels = {
@@ -276,9 +277,18 @@ function PetSettings({ ui }) {
     if (val === "none") return host.t("不显示", "Hide pet");
     return pets.get(val)?.name ?? val;
   };
-  const remove = (pet) => {
-    if (!window.confirm(host.t(`删除宠物“${pet.name}”？`, `Delete “${pet.name}”?`))) return;
-    if (editing === pet.id) setEditing(null);
+  const remove = async (pet) => {
+    const own = (list) => list.find((p) => p.id === pet.id);
+    const before = own(host.storage.get("custom", []));
+    setRemoveError(null);
+    try {
+      if (!(await host.confirm(host.t(`删除宠物“${pet.name}”？`, `Delete “${pet.name}”?`), { variant: "destructive" }))) return;
+    } catch (e) {
+      setRemoveError(e.message);
+      return;
+    }
+    if (own(host.storage.get("custom", [])) !== before) return; // 确认期间这只被改过或删了：不按旧的删
+    setEditing((current) => (current === pet.id ? null : current));
     // 引用它的对应关系一起删掉，回到默认对应；否则 petFor 会退回 codex，而设置里显示成“按模型名”。
     const map = host.storage.get("map", {});
     host.storage.set("map", Object.fromEntries(Object.entries(map).filter(([, v]) => v !== pet.id)));
@@ -345,6 +355,7 @@ function PetSettings({ ui }) {
             )
           : null,
       },
+      removeError ? h("p", { className: "t3x-error", role: "alert" }, removeError) : null,
       h(
         "div",
         { className: "t3x-pet-library-body" },

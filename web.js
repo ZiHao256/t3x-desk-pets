@@ -39,6 +39,7 @@ const controller = createPetController({
   position: { get: () => host.storage.get("x", 0.9), set: (v) => host.storage.set("x", v) },
   quiet: isQuiet,
   onMenu: (ev) => openMenu(ev, true),
+  composer: host.dom.composer,
 });
 
 // 右键菜单用 T3 自己的菜单样式（host.contextMenu，返回选中项的 id）。onPet：右键的是宠物还是模型选择器。
@@ -82,8 +83,7 @@ function openMenu(ev, onPet) {
 
 // 只接管主输入框里的模型选择器（设置页、side chat 里的不管）。
 function onContextMenu(ev) {
-  const picker = ev.target instanceof Element ? ev.target.closest("[data-chat-provider-model-picker]") : null;
-  if (picker?.closest('[data-slot="composer-host"]') && !picker.closest("[data-side-chat-pane]")) openMenu(ev, false);
+  if (host.dom.modelPicker(ev.target)) openMenu(ev, false);
 }
 document.addEventListener("contextmenu", onContextMenu, true);
 
