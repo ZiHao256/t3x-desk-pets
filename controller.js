@@ -1,6 +1,7 @@
 // 桌宠控制器：只操作 DOM，不依赖 React。宠物挂在主输入框上沿（side chat 里的输入框不挂）。
 // catalog.get(id) 给出宠物定义（sheet、badgeBottom 等），position 读写宠物在输入框上沿的位置比例。
-function createPetController({ catalog, position }) {
+// quiet() 为真时宠物原地待着：不闲逛、不庆祝，子代理直接落座和离开；onMenu(ev) 处理右键宠物。
+function createPetController({ catalog, position, quiet, onMenu }) {
   // 精灵图 8 列 x 11 行：行号 + 每帧时长（毫秒）。第 9、10 行是 16 个方向的看向帧。
   const ROWS = {
     idle: [0, [280, 110, 110, 140, 140, 320]],
@@ -14,7 +15,7 @@ function createPetController({ catalog, position }) {
     review: [8, [150, 150, 150, 150, 150, 280]],
   };
   const LOOPING = new Set(["idle", "running", "waiting", "running-left", "running-right"]);
-  const HIDE_KEY = "t3x-pets-hidden"; // 右键让宠物先离开：本次启动内有效
+  const HIDE_KEY = "t3x-pets-hidden"; // 右键菜单“隐藏桌宠”：本次启动内有效
   const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
   let stage = null;
   let pet = null; // { el, sprite, petId }
@@ -449,12 +450,9 @@ function createPetController({ catalog, position }) {
     p.el.addEventListener("pointerenter", () => {
       if (p === pet && !drag && !p.exiting && !p.bumping && p.state === "idle" && wanted.mood === "idle") play(p, "waving", { once: true });
     });
-    // 右键让宠物这次先离开，下次启动再出现。
     p.el.addEventListener("contextmenu", (ev) => {
       ev.preventDefault();
-      hidden = true;
-      sessionStorage.setItem(HIDE_KEY, "1");
-      hideAll();
+      onMenu(ev);
     });
   }
 
@@ -526,9 +524,9 @@ function createPetController({ catalog, position }) {
     place,
     play,
     motion,
-    reduced,
+    reduced: () => reduced() || quiet(),
     glance,
-    cheer: () => pet && !pet.exiting && pet.el.dataset.motion === "idle" && play(pet, "jumping", { once: true }),
+    cheer: () => !quiet() && pet && !pet.exiting && pet.el.dataset.motion === "idle" && play(pet, "jumping", { once: true }),
     badgeBottom: (id) => catalog.get(id)?.badgeBottom ?? 54,
   });
 
@@ -537,7 +535,7 @@ function createPetController({ catalog, position }) {
     clearTimeout(wanderTimer);
     wanderTimer = setTimeout(() => {
       const p = pet;
-      if (p && !p.exiting && !p.held && !p.bumping && !document.hidden && !reduced() && !subPets.count() && wanted.mood === "idle" && p.state === "idle" && !looking && p.el.dataset.motion === "idle") {
+      if (p && !p.exiting && !p.held && !p.bumping && !document.hidden && !reduced() && !quiet() && !subPets.count() && wanted.mood === "idle" && p.state === "idle" && !looking && p.el.dataset.motion === "idle") {
         const max = span();
         const target = Math.max(0, Math.min(max, p.x + (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 100)));
         const dir = target > p.x ? 1 : -1;
@@ -545,6 +543,11 @@ function createPetController({ catalog, position }) {
         const step = () => {
           wanderRaf = 0;
           if (pet !== p || p.exiting || p.held || p.el.dataset.motion !== "idle" || p.state.indexOf("running-") !== 0) return;
+          if (quiet()) {
+            // 走到一半打开了安静模式：就地停下
+            position.set(max ? p.x / max : 0.9);
+            return play(p, wanted.mood);
+          }
           const next = p.x + dir * 1.6;
           if ((dir > 0 && next >= target) || (dir < 0 && next <= target)) {
             place(p, target, max);
@@ -573,6 +576,7 @@ function createPetController({ catalog, position }) {
     catchUp();
   }
   function tryCheer() {
+    if (quiet()) missedCheer = false;
     if (!missedCheer || away() || !pet || pet.exiting || !pet.el.isConnected || pet.el.dataset.motion !== "idle") return false;
     missedCheer = false;
     clearTimeout(lookTimer);
@@ -690,11 +694,26 @@ function createPetController({ catalog, position }) {
     enabled,
     // 当前 agent 设成不显示桌宠：主宠物和子宠物都离开，但不算“隐藏”，换了 agent 还会出现。
     clear: hideAll,
-    // 设置里“叫回桌宠”：解除右键的临时隐藏。
+    // 右键菜单“隐藏桌宠”：这次启动内先离开，下次启动再出现。
+    hide() {
+      hidden = true;
+      sessionStorage.setItem(HIDE_KEY, "1");
+      hideAll();
+    },
+    // 右键模型选择器“显示桌宠”：解除隐藏。
     unhide() {
       sessionStorage.removeItem(HIDE_KEY);
       hidden = false;
       window.dispatchEvent(new Event("t3x-pets-change"));
+    },
+    // 右键菜单“打个招呼”：挥挥手。
+    greet() {
+      const p = pet;
+      if (!p || p.exiting || p.held || p.bumping || p.el.dataset.motion !== "idle") return;
+      clearTimeout(lookTimer);
+      lookTimer = 0;
+      looking = false;
+      play(p, "waving", { once: true });
     },
     // 宠物定义改了（换图、缩放）：当前这只换成新样子重新入场。
     refresh() {

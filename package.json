@@ -1,0 +1,11 @@
+{
+  "name": "t3x-desk-pets",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node tests/test.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

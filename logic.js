@@ -76,14 +76,17 @@ const DEFAULT_MAP = { codex: "codex", claudeAgent: "claude", antigravity: "gemin
 function petFor(driver, model, map, has) {
   let id = driver && Object.hasOwn(map, driver) ? map[driver] : undefined;
   if (id === "auto") id = undefined; // 设置里明确选了“按模型名”，不用默认对应
-  if (id === undefined) {
-    const m = String(model || "").toLowerCase();
-    if (/claude|opus|sonnet|haiku|fable/.test(m)) id = map.claudeAgent;
-    else if (/gemini/.test(m)) id = map.antigravity;
-  }
+  if (id === undefined && modelKey(model) !== "*") id = map[modelKey(model)];
   if (id === undefined) id = map["*"];
   if (id === "none" || id == null) return null;
   return has(id) ? id : has("codex") ? "codex" : null;
+}
+
+/** 没有 driver 专属设置时，按模型名落到 map 的哪一项：Claude / Gemini 系的模型用它们的设置，其余用 "*"。 */
+function modelKey(model) {
+  const m = String(model || "").toLowerCase();
+  if (/claude|opus|sonnet|haiku|fable/.test(m)) return "claudeAgent";
+  return /gemini/.test(m) ? "antigravity" : "*";
 }
 
 const PET_ID_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
@@ -223,6 +226,7 @@ if (typeof module === "object" && module.exports) {
     resumeSubagents,
     backgroundFinish,
     petFor,
+    modelKey,
     cleanPet,
     petCss,
     findBumpTarget,

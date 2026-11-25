@@ -35,10 +35,62 @@ rebuild();
 
 const has = (id) => pets.has(id);
 const currentMap = () => ({ ...DEFAULT_MAP, ...host.storage.get("map", {}) });
+const isQuiet = () => host.storage.get("quiet", false) === true;
+// 主输入框挂着桌宠时的 agent（PetsOverlay 挂载期间）；当前项目或环境停用了桌宠就是 null，右键模型选择器不接管。
+let mainAgent = null;
+let disposed = false;
 const controller = createPetController({
   catalog: { get: (id) => pets.get(id) },
   position: { get: () => host.storage.get("x", 0.9), set: (v) => host.storage.set("x", v) },
+  quiet: isQuiet,
+  onMenu: (ev) => openMenu(ev, true),
 });
+
+// 右键菜单用 T3 自己的菜单样式（host.contextMenu，返回选中项的 id）。onPet：右键的是宠物还是模型选择器。
+function menuItems(onPet, agent) {
+  const current = petFor(agent.driver, agent.model, currentMap(), has);
+  const items = onPet ? [] : [{ id: "toggle", label: host.t("显示桌宠", "Show desk pet"), checked: controller.enabled() }];
+  // 图标只能用 T3 菜单内置的几个名字；勾选项自带勾或等宽留白，每项都有图标文字才对齐。
+  items.push({ id: "switch", label: host.t("换一只宠物", "Switch pet"), icon: "refresh-cw", children: [...pets.values()].map((p) => ({ id: `pet:${p.id}`, label: p.name, checked: p.id === current })) });
+  if (onPet) items.push({ id: "greet", label: host.t("打个招呼", "Say hi"), icon: "message-square" });
+  items.push({ id: "quiet", label: host.t("安静模式", "Quiet mode"), checked: isQuiet() });
+  items.push({ id: "settings", label: host.t("桌宠设置…", "Desk pet settings…"), icon: "settings", separatorBefore: true });
+  if (onPet) items.push({ id: "hide", label: host.t("隐藏桌宠", "Hide desk pet"), icon: "pin-off" }); // 右键模型选择器叫回
+  return items;
+}
+
+// agent 是打开菜单时的那个：菜单开着的时候换了会话，也改的是当时那个 agent。
+function runMenu(choice, agent) {
+  if (disposed) return; // 菜单开着时扩展被停用
+  if (choice === "hide" || (choice === "toggle" && controller.enabled())) controller.hide();
+  else if (choice === "toggle") controller.unhide();
+  else if (choice === "greet") controller.greet();
+  else if (choice === "quiet") host.storage.set("quiet", !isQuiet());
+  else if (choice === "settings") host.openSettings();
+  else if (choice?.startsWith("pet:")) {
+    // 没有 driver（还没选 harness）时改实际生效的那项，否则按模型名匹配会盖过 "*"。
+    host.storage.set("map", { ...host.storage.get("map", {}), [agent.driver ?? modelKey(agent.model)]: choice.slice(4) });
+    if (!controller.enabled()) controller.unhide(); // 隐藏时选了一只，就是想看到它
+  }
+}
+
+function openMenu(ev, onPet) {
+  const agent = mainAgent;
+  if (!agent) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  host.contextMenu(menuItems(onPet, agent), { x: ev.clientX, y: ev.clientY }).then(
+    (choice) => runMenu(choice, agent),
+    (error) => console.error("[desk-pets] 右键菜单出错", error),
+  );
+}
+
+// 只接管主输入框里的模型选择器（设置页、side chat 里的不管）。
+function onContextMenu(ev) {
+  const picker = ev.target instanceof Element ? ev.target.closest("[data-chat-provider-model-picker]") : null;
+  if (picker?.closest('[data-slot="composer-host"]') && !picker.closest("[data-side-chat-pane]")) openMenu(ev, false);
+}
+document.addEventListener("contextmenu", onContextMenu, true);
 
 // 扩展级宠物库/映射版本：卸载聊天视图后再改设置，重挂时仍能识别旧缓存已失效。
 let catalogVersion = 0;
@@ -83,6 +135,14 @@ function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, er
   const prevRef = React.useRef(null);
   const pendingRef = React.useRef(false);
   const [visible, setVisible] = React.useState(() => controller.enabled());
+  React.useEffect(() => {
+    if (embedded) return;
+    const agent = { driver, model };
+    mainAgent = agent;
+    return () => {
+      if (mainAgent === agent) mainAgent = null;
+    };
+  }, [embedded, driver, model]);
   React.useEffect(() => {
     const sync = () => setVisible(controller.enabled());
     window.addEventListener("t3x-pets-change", sync);
@@ -144,6 +204,8 @@ host.register("chat.overlay", PetsOverlay);
 host.settings(PetSettings);
 
 return () => {
+  disposed = true;
+  document.removeEventListener("contextmenu", onContextMenu, true);
   offCustom();
   offMap();
   catalogListeners.clear();
