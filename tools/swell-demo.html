@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桌宠上下文膨胀 & 压缩动画预览</title>
+  <link rel="stylesheet" href="../pets.css" />
+  <link rel="stylesheet" href="../pets-keyframes.css" />
+  <link rel="stylesheet" href="../pets-fx.css" />
+  <link rel="stylesheet" href="../pets-subagents.css" />
+  <link rel="stylesheet" href="../pets-swell.css" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6fa;
+      --card: #ffffff;
+      --border: #d8dee8;
+      --text: #1e293b;
+      --muted: #64748b;
+      --btn-bg: #f1f5f9;
+      --btn-hover: #e2e8f0;
+      --accent: #4f6ef7;
+      --accent-text: #ffffff;
+    }
+
+    html.dark {
+      color-scheme: dark;
+      --bg: #111318;
+      --card: #1b1f27;
+      --border: #2c3340;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --btn-bg: #262c38;
+      --btn-hover: #323a49;
+      --accent: #5b7cff;
+      --accent-text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .demo {
+      width: min(680px, 100%);
+      display: grid;
+      gap: 20px;
+    }
+
+    .composer-wrap {
+      padding-top: 120px;
+    }
+
+    .composer {
+      position: relative;
+      height: 112px;
+      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    html.dark .composer {
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.36);
+    }
+
+    .composer-placeholder {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .composer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meter {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .meter-track {
+      width: 110px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--btn-bg);
+      overflow: hidden;
+    }
+
+    .meter-bar {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 160ms ease-out, background-color 160ms ease-out;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .row label {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 72px;
+    }
+
+    .slider-wrap {
+      flex: 1;
+      min-width: 180px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+
+    .val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      min-width: 44px;
+      text-align: right;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--btn-bg);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease;
+    }
+
+    button:hover {
+      background: var(--btn-hover);
+    }
+
+    button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <section class="composer-wrap">
+      <div class="composer" data-slot="composer-host">
+        <div class="t3x-pet-stage" aria-hidden="true">
+          <div class="t3x-pet" id="pet" data-pet="codex" data-motion="idle" data-facing="left" style="left: 520px; --t3x-pet-fill: 0;">
+            <div class="t3x-pet-shadow"></div>
+            <div class="t3x-pet-body">
+              <div class="t3x-pet-sprite" id="sprite" style="background-image: url(../pets/codex/sheet.webp); background-size: 800% 1100%; background-position: 0% 0%;"></div>
+            </div>
+            <div class="t3x-pet-fx"></div>
+            <div class="t3x-pet-puff" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="composer-placeholder">模拟输入框（宠物脚底应始终稳踩在卡片上沿）</div>
+        <div class="composer-bar">
+          <span>t3x-desk-pets · pets-swell.css 本地预览</span>
+          <span class="meter">
+            <span class="meter-track"><span class="meter-bar" id="meterBar"></span></span>
+            <span id="meterText">0%</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <label for="fill">fill 占用</label>
+        <div class="slider-wrap">
+          <input id="fill" type="range" min="0" max="1" step="0.01" value="0" />
+          <span class="val" id="fillVal">0.00</span>
+        </div>
+        <button type="button" data-fill-preset="0">0.00</button>
+        <button type="button" data-fill-preset="0.5">0.50</button>
+        <button type="button" data-fill-preset="0.85">0.85 high</button>
+        <button type="button" data-fill-preset="0.98">0.98 full</button>
+      </div>
+
+      <div class="row">
+        <label>压缩流程</label>
+        <button type="button" id="btnSqueeze">squeeze（压缩中）</button>
+        <button type="button" id="btnPop">pop（弹回 1100ms）</button>
+        <button type="button" id="btnFlow">演示完整：满 → 挤 → 噗</button>
+        <button type="button" id="btnSnap">snap 切换会话</button>
+      </div>
+
+      <div class="row">
+        <label>模式与外观</label>
+        <button type="button" id="btnCalm">calm 安静模式</button>
+        <button type="button" id="btnDark">深色主题</button>
+        <button type="button" id="btnPoke">戳一下（验证不冲突）</button>
+        <button type="button" data-pet-pick="codex" class="active">Codex</button>
+        <button type="button" data-pet-pick="claude">Clawd</button>
+        <button type="button" data-pet-pick="gemini">Moffy</button>
+      </div>
+
+      <div class="status" id="status"></div>
+    </section>
+  </main>
+
+  <script>
+    const pet = document.getElementById("pet");
+    const sprite = document.getElementById("sprite");
+    const body = pet.querySelector(".t3x-pet-body");
+    const slider = document.getElementById("fill");
+    const fillVal = document.getElementById("fillVal");
+    const meterBar = document.getElementById("meterBar");
+    const meterText = document.getElementById("meterText");
+    const status = document.getElementById("status");
+    const btnSqueeze = document.getElementById("btnSqueeze");
+    const btnPop = document.getElementById("btnPop");
+    const btnCalm = document.getElementById("btnCalm");
+    const btnDark = document.getElementById("btnDark");
+
+    const PET_PRESETS = {
+      codex: {
+        sheet: "../pets/codex/sheet.webp",
+        pixelFx: false,
+        vars: { "--t3x-pet-scale": "1.1" }, // 和 web.js 的内置 Codex 一致
+      },
+      claude: {
+        sheet: "../pets/claude/sheet.webp",
+        pixelFx: true,
+        vars: {
+          "--t3x-pet-scale": "1.125",
+          "--t3x-pet-sink": "calc(var(--t3x-pet-w) * 0.114)",
+          "--t3x-pet-shadow-bottom": "calc(var(--t3x-pet-w) * 0.066)",
+          "--t3x-pet-origin-y": "92%",
+          "--t3x-pet-fx-burst-top": "68%",
+          "--t3x-pet-fx-poke-top": "18%",
+        },
+      },
+      gemini: {
+        sheet: "../pets/gemini/sheet.webp",
+        pixelFx: false,
+        vars: {
+          "--t3x-pet-sink": "calc(var(--t3x-pet-w) * 0.105)",
+          "--t3x-pet-shadow-bottom": "calc(var(--t3x-pet-w) * 0.056)",
+          "--t3x-pet-origin-y": "93%",
+        },
+      },
+    };
+    const RESET_VARS = [
+      "--t3x-pet-scale",
+      "--t3x-pet-sink",
+      "--t3x-pet-shadow-bottom",
+      "--t3x-pet-origin-y",
+      "--t3x-pet-fx-burst-top",
+      "--t3x-pet-fx-poke-top",
+    ];
+
+    let popTimer = 0;
+    let flowTimer = 0;
+
+    function syncStatus() {
+      const attrs = [
+        `--t3x-pet-fill=${pet.style.getPropertyValue("--t3x-pet-fill") || "0"}`,
+        pet.dataset.fill ? `data-fill="${pet.dataset.fill}"` : null,
+        pet.dataset.compact ? `data-compact="${pet.dataset.compact}"` : null,
+        "swellSnap" in pet.dataset ? "data-swell-snap" : null,
+        "calm" in pet.dataset ? "data-calm" : null,
+        `data-motion="${pet.dataset.motion}"`,
+      ].filter(Boolean);
+      status.textContent = attrs.join("  |  ");
+      btnSqueeze.classList.toggle("active", pet.dataset.compact === "squeeze");
+      btnPop.classList.toggle("active", pet.dataset.compact === "pop");
+      btnCalm.classList.toggle("active", "calm" in pet.dataset);
+    }
+
+    function setFill(v) {
+      const n = Math.max(0, Math.min(1, Number(v) || 0));
+      slider.value = n.toFixed(2);
+      fillVal.textContent = n.toFixed(2);
+      pet.style.setProperty("--t3x-pet-fill", n.toFixed(3));
+      if (n >= 0.95) pet.dataset.fill = "full";
+      else if (n >= 0.8) pet.dataset.fill = "high";
+      else delete pet.dataset.fill;
+      meterBar.style.width = `${Math.round(n * 100)}%`;
+      meterBar.style.backgroundColor = n >= 0.95 ? "#ef4444" : n >= 0.8 ? "#f59e0b" : "var(--accent)";
+      meterText.textContent = `${Math.round(n * 100)}%`;
+      syncStatus();
+    }
+
+    function clearTimers() {
+      clearTimeout(popTimer);
+      clearTimeout(flowTimer);
+      popTimer = 0;
+      flowTimer = 0;
+    }
+
+    function triggerPop(targetFill) {
+      clearTimers();
+      if (typeof targetFill === "number") setFill(targetFill);
+      delete pet.dataset.compact;
+      void pet.offsetWidth;
+      pet.dataset.compact = "pop";
+      syncStatus();
+      popTimer = setTimeout(() => {
+        popTimer = 0;
+        if (pet.dataset.compact === "pop") delete pet.dataset.compact;
+        syncStatus();
+      }, 1100);
+    }
+
+    slider.addEventListener("input", () => setFill(slider.value));
+
+    for (const btn of document.querySelectorAll("[data-fill-preset]")) {
+      btn.addEventListener("click", () => {
+        clearTimers();
+        delete pet.dataset.compact;
+        setFill(Number(btn.dataset.fillPreset));
+      });
+    }
+
+    btnSqueeze.addEventListener("click", () => {
+      clearTimers();
+      if (pet.dataset.compact === "squeeze") delete pet.dataset.compact;
+      else pet.dataset.compact = "squeeze";
+      syncStatus();
+    });
+
+    btnPop.addEventListener("click", () => {
+      const cur = Number(slider.value);
+      triggerPop(cur > 0.35 ? 0.16 : cur);
+    });
+
+    document.getElementById("btnFlow").addEventListener("click", () => {
+      clearTimers();
+      delete pet.dataset.compact;
+      setFill(0.98);
+      flowTimer = setTimeout(() => {
+        pet.dataset.compact = "squeeze";
+        syncStatus();
+        flowTimer = setTimeout(() => triggerPop(0.15), 2200);
+      }, 1100);
+    });
+
+    document.getElementById("btnSnap").addEventListener("click", () => {
+      clearTimers();
+      delete pet.dataset.compact;
+      const next = Number(slider.value) > 0.5 ? 0.1 : 0.96;
+      pet.dataset.swellSnap = "";
+      setFill(next);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          delete pet.dataset.swellSnap;
+          syncStatus();
+        });
+      });
+    });
+
+    btnCalm.addEventListener("click", () => {
+      if ("calm" in pet.dataset) delete pet.dataset.calm;
+      else pet.dataset.calm = "";
+      syncStatus();
+    });
+
+    btnDark.addEventListener("click", () => {
+      const dark = document.documentElement.classList.toggle("dark");
+      btnDark.classList.toggle("active", dark);
+    });
+
+    document.getElementById("btnPoke").addEventListener("click", () => {
+      pet.dataset.motion = "idle";
+      void body.offsetWidth;
+      pet.dataset.motion = "poke";
+      syncStatus();
+      const onEnd = (ev) => {
+        if (ev.target !== body) return;
+        body.removeEventListener("animationend", onEnd);
+        pet.dataset.motion = "idle";
+        syncStatus();
+      };
+      body.addEventListener("animationend", onEnd);
+    });
+
+    for (const btn of document.querySelectorAll("[data-pet-pick]")) {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.petPick;
+        const p = PET_PRESETS[id];
+        pet.dataset.pet = id;
+        if (p.pixelFx) pet.dataset.pixelFx = "";
+        else delete pet.dataset.pixelFx;
+        for (const k of RESET_VARS) pet.style.removeProperty(k);
+        for (const [k, v] of Object.entries(p.vars)) pet.style.setProperty(k, v);
+        sprite.style.backgroundImage = `url(${p.sheet})`;
+        for (const b of document.querySelectorAll("[data-pet-pick]")) b.classList.toggle("active", b === btn);
+        syncStatus();
+      });
+    }
+
+    document.querySelector('[data-pet-pick="codex"]').click();
+    setFill(0);
+  </script>
+</body>
+</html>

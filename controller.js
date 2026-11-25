@@ -22,6 +22,9 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   let pet = null; // { el, sprite, petId }
   const exitingMains = new Set(); // 退场中的旧主宠：纳入 detach/dispose 统一清理
   let wanted = { petId: null, mood: "idle" };
+  let fill = 0;
+  let compact = null;
+  let popTimer = 0;
   let hidden = false;
   let detachTimer = 0;
   let switchTimer = 0;
@@ -159,6 +162,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
 
   function destroy(p) {
     p.exiting = true;
+    if (p.snapFrame != null) cancelAnimationFrame(p.snapFrame);
     p.cancelDrag?.();
     p.cancelBump?.(p);
     p.cancelMotion?.();
@@ -171,7 +175,66 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
     p.el.remove();
   }
 
+  function setData(el, key, value) {
+    if (el.dataset[key] === value) return;
+    if (value === undefined) delete el.dataset[key];
+    else el.dataset[key] = value;
+  }
+
+  function syncCalm() {
+    const calm = quiet() ? "" : undefined;
+    if (pet) setData(pet.el, "calm", calm);
+    for (const p of exitingMains) setData(p.el, "calm", calm);
+  }
+
+  function renderSwell(p, snap) {
+    if (snap) {
+      if (p.snapFrame != null) cancelAnimationFrame(p.snapFrame);
+      p.el.dataset.swellSnap = "";
+      p.snapFrame = requestAnimationFrame(() => {
+        p.snapFrame = requestAnimationFrame(() => {
+          delete p.el.dataset.swellSnap;
+          p.snapFrame = null;
+        });
+      });
+    }
+    if (snap ? fill !== p.writtenFill : Math.abs(fill - p.writtenFill) + Number.EPSILON >= 0.005) {
+      p.el.style.setProperty("--t3x-pet-fill", String(fill));
+      p.writtenFill = fill;
+    }
+    setData(p.el, "fill", fillLevel(fill));
+    setData(p.el, "compact", compact?.phase);
+    setData(p.el, "calm", quiet() ? "" : undefined);
+  }
+
+  function updateSwell(threadKey, nextFill, compacting) {
+    const prev = compact;
+    const snap = !prev || prev.threadKey !== threadKey;
+    fill = nextFill;
+    compact = compactState(prev, threadKey, compacting);
+    if (snap || prev.phase !== compact.phase) {
+      clearTimeout(popTimer);
+      if (compact.phase === "pop") {
+        // 松气的期限属于当前会话；中途换宠物仍在原定时刻收尾。
+        popTimer = setTimeout(() => {
+          popTimer = 0;
+          compact = compactState(compact, threadKey, false, true);
+          if (pet) setData(pet.el, "compact", undefined);
+        }, 1100);
+      }
+    }
+    if (pet) renderSwell(pet, snap); // 换输入框时宠物会短暂脱离文档，也要先写上新会话的值
+  }
+
+  function resetSwell() {
+    clearTimeout(popTimer);
+    popTimer = 0;
+    compact = null;
+    fill = 0;
+  }
+
   function enter(p, x, style) {
+    renderSwell(p, true);
     stage.appendChild(p.el);
     place(p, x);
     subPets.flush();
@@ -182,6 +245,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   }
 
   function runExit(p) {
+    setData(p.el, "compact", undefined);
     if (!p.el.isConnected) return destroy(p);
     exitingMains.add(p);
     const toRight = p.x < span() / 2 ? false : true;
@@ -209,6 +273,10 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
     switchTimer = 0;
     const old = pet;
     const next = create(petId);
+    const puff = document.createElement("div");
+    puff.className = "t3x-pet-puff";
+    puff.setAttribute("aria-hidden", "true");
+    next.el.appendChild(puff);
     next.x = old ? old.x : ratio() * span(); // 还没入场就又被换掉时，下一只仍从这里出现
     pet = next;
     if (old) exit(old);
@@ -492,6 +560,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   const enabled = () => !hidden && sessionStorage.getItem(HIDE_KEY) !== "1";
 
   function hideAll() {
+    resetSwell();
     gen += 1; // 关掉前排队等 host 的 update 作废，免得 host 出现后又把宠物挂回去
     cancelAnimationFrame(stageRaf);
     stageRaf = 0;
@@ -635,6 +704,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   }
 
   function clearStage() {
+    resetSwell();
     gen += 1;
     missed = [];
     missedCheer = false;
@@ -660,6 +730,8 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   }
 
   return {
+    updateSwell,
+    syncCalm,
     update(next) {
       clearTimeout(detachTimer);
       detachTimer = 0;

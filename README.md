@@ -14,10 +14,15 @@ An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensi
 
 只依赖宿主提供的 `host` 接口（`apiVersion` 3），不直接读 T3 的页面结构，旧版宿主会拒绝安装。
 
+The pet swells as the thread's context fills up and squeezes itself back while T3 compacts history. This needs a host that passes `context` / `compacting` to `chat.overlay` (T3 Code Extensions 0.2+); on older hosts the pet just keeps its size.
+
+宠物随会话上下文变满逐渐变胖，T3 压缩历史时把自己挤小、压完“噗”地弹回。需要宿主给 `chat.overlay` 传 `context` / `compacting`（T3 Code Extensions 0.2 起）；旧宿主上宠物保持原样大小。
+
 ## Development / 开发
 
 - `npm test` runs the tests (Node 22+, no dependencies). 运行测试，不依赖 npm 包。
 - To try changes: Settings → Extensions → Add local extension, pick this folder, then click refresh on its card after each edit. 试改动：设置 → 扩展 →“添加本地扩展”选本仓库目录，改完点卡片上的刷新。
+- `tools/swell-demo.html`: open it in a browser to tune the swell / squeeze animation with a slider. 浏览器打开它，用滑块调膨胀和压缩动画。
 
 ## Sprite sheet / 精灵图格式
 

@@ -102,6 +102,34 @@ test("桌宠：agent → 宠物", () => {
   assert.equal(pets.findFreeSeat({ mainX: 126, span: 140, occupied: [10, 26], total: 2 }), 76);
 });
 
+test("桌宠：上下文用量优先按压缩阈值计算并分档", () => {
+  assert.equal(pets.contextFill(null), 0);
+  assert.equal(pets.contextFill({ usedTokens: 80, maxTokens: null, usedPercentage: 80 }), 0);
+  assert.equal(pets.contextFill({ usedTokens: 80, maxTokens: null, autoCompactThreshold: 100 }), 0.8);
+  assert.equal(pets.contextFill({ usedTokens: 80, maxTokens: 200, autoCompactThreshold: 100 }), 0.8);
+  assert.equal(pets.contextFill({ usedTokens: 80, maxTokens: 200, autoCompactThreshold: 0 }), 0.4);
+  for (const maxTokens of [0, -1, Infinity, NaN]) assert.equal(pets.contextFill({ usedTokens: 80, maxTokens }), 0);
+  assert.equal(pets.contextFill({ usedTokens: -1, maxTokens: 100 }), 0);
+  assert.equal(pets.contextFill({ usedTokens: 120, maxTokens: 100 }), 1);
+  assert.deepEqual([0, 0.799, 0.8, 0.949, 0.95, 1].map(pets.fillLevel), [undefined, undefined, "high", "high", "full", "full"]);
+});
+
+test("桌宠：压缩结束仅在原会话松气", () => {
+  const start = pets.compactState(null, "a", true);
+  assert.equal(start.phase, "squeeze");
+  const end = pets.compactState(start, "a", false);
+  assert.equal(end.phase, "pop");
+  assert.equal(pets.compactState(end, "a", false).phase, "pop");
+  assert.equal(pets.compactState(end, "a", false, true).phase, undefined);
+  assert.equal(pets.compactState(start, "b", false).phase, undefined);
+  assert.equal(pets.compactState(end, "b", false).phase, undefined);
+  const switched = pets.compactState(start, "b", true);
+  assert.equal(switched.phase, "squeeze");
+  const idle = pets.compactState(switched, "b", false);
+  assert.equal(idle.phase, "pop", "A 压缩中切到也在压缩的 B：B 压完照样松气");
+  assert.equal(pets.compactState(pets.compactState(idle, "b", true), "b", false).phase, "pop");
+});
+
 test("桌宠：拖动碰头判定与分开站位", () => {
   const list = [{ id: "a", x: 100 }, { id: "b", x: 220 }];
   assert.equal(pets.findBumpTarget(120, list)?.id, "a");
@@ -140,7 +168,7 @@ test("桌宠：拖动碰头判定与分开站位", () => {
 });
 
 // 最小 DOM + 可控时钟替身，用于回归桌宠状态机（离场、碰头、指针、补播、布局读取、rAF 清理）。
-function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } = {}) {
+function createPetsHarness({ stageWidth = 600, focused = true, hidden = false, quiet = () => false } = {}) {
   let now = 0;
   let nextTimerId = 1;
   let nextRafId = 1;
@@ -191,7 +219,9 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } 
       if (this.className === "t3x-pet") offsetWidthReads += 1;
       return 64;
     }
-    setAttribute() {}
+    setAttribute(key, value) {
+      (this.attributes ??= {})[key] = value;
+    }
     closest() {
       return null;
     }
@@ -315,7 +345,7 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } 
   const ctrl = createPetController({
     catalog,
     position: { get: () => posVal, set: (v) => (posVal = v) },
-    quiet: () => false,
+    quiet,
     onMenu: () => ctrl.hide(),
     composer: () => hostEl,
   });
@@ -391,6 +421,81 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false } 
     storageSubs,
   };
 }
+
+test("桌宠：主宠物的用量、切会话、换宠与定时清理", () => {
+  let calm = false;
+  const h = createPetsHarness({ quiet: () => calm });
+  const fill = "--t3x-pet-fill";
+  h.ctrl.update({ petId: "codex", mood: "idle" });
+  h.ctrl.updateSwell("a", 0.799, false);
+  h.advance(0);
+  const main = h.mainEls()[0];
+  assert.equal(main.children.at(-2).className, "t3x-pet-fx");
+  assert.equal(main.children.at(-1).className, "t3x-pet-puff");
+  assert.equal(main.children.at(-1).attributes["aria-hidden"], "true");
+  assert.equal(main.style[fill], "0.799");
+  assert.equal(main.dataset.swellSnap, "");
+  h.stepRaf();
+  assert.equal(main.dataset.swellSnap, "");
+  h.stepRaf();
+  assert.equal(main.dataset.swellSnap, undefined);
+  h.ctrl.updateSwell("a", 0.8, false);
+  assert.equal(main.style[fill], "0.799");
+  assert.equal(main.dataset.fill, "high");
+  h.ctrl.updateSwell("a", 0.806, true);
+  assert.equal(main.style[fill], "0.806");
+  assert.equal(main.dataset.compact, "squeeze");
+  h.ctrl.updateSwell("b", 0.809, false);
+  assert.equal(main.style[fill], "0.809");
+  assert.equal(main.dataset.swellSnap, "");
+  assert.equal(main.dataset.compact, undefined);
+  h.ctrl.subagents([{ type: "seat", id: "s1", petId: "codex", status: "running" }], true);
+  calm = true;
+  h.ctrl.syncCalm();
+  assert.equal(main.dataset.calm, "");
+  const sub = h.subEls()[0];
+  assert.equal(sub.style[fill], undefined);
+  for (const key of ["fill", "swellSnap", "compact", "calm"]) assert.equal(sub.dataset[key], undefined);
+  assert.equal(sub.children.some((child) => child.className === "t3x-pet-puff"), false);
+
+  h.ctrl.updateSwell("b", 0.97, true);
+  h.ctrl.update({ petId: "claude", mood: "idle" });
+  h.advance(120);
+  const replacement = h.mainEls().at(-1);
+  assert.equal(replacement.dataset.compact, "squeeze");
+  assert.equal(replacement.dataset.calm, "");
+  assert.equal(replacement.dataset.fill, "full");
+  assert.equal(replacement.style[fill], "0.97");
+  h.ctrl.updateSwell("b", 0.21, false);
+  assert.equal(replacement.dataset.compact, "pop");
+  assert.equal(replacement.dataset.fill, undefined);
+  h.advance(600);
+  h.ctrl.refresh();
+  h.advance(120);
+  const rebuilt = h.mainEls().at(-1);
+  assert.equal(rebuilt.style[fill], "0.21");
+  assert.equal(rebuilt.dataset.compact, "pop");
+  calm = false;
+  h.ctrl.syncCalm();
+  assert.equal(rebuilt.dataset.calm, undefined);
+  h.advance(379);
+  assert.equal(rebuilt.dataset.compact, "pop");
+  h.advance(1);
+  assert.equal(rebuilt.dataset.compact, undefined);
+
+  // 换输入框时宠物短暂脱离文档：这期间切到的新会话状态也要写上，重挂后不能还是旧会话的样子
+  rebuilt._connected = false;
+  h.ctrl.updateSwell("d", 0.12, false);
+  assert.equal(rebuilt.style[fill], "0.12");
+  assert.equal(rebuilt.dataset.compact, undefined);
+  rebuilt._connected = true;
+
+  h.ctrl.updateSwell("c", 1, true);
+  h.ctrl.updateSwell("c", 0.2, false);
+  h.ctrl.dispose();
+  assert.equal(h.timers.size, 0);
+  assert.equal(h.rafs.size, 0);
+});
 
 test("桌宠：离场、碰头、指针、补播、布局与 rAF 回归", () => {
   // 1. 拖动中切换主宠，松手不会复活旧主宠，dispose 后计时器清零
@@ -628,6 +733,8 @@ test("桌宠：离场、碰头、指针、补播、布局与 rAF 回归", () => 
     const h = createPetsHarness({ stageWidth: 600 });
     h.ctrl.update({ petId: "codex", mood: "idle" });
     h.advance(50);
+    h.stepRaf();
+    h.stepRaf();
     h.finishAnim(h.mainEls()[0]);
     h.ctrl.subagents(
       [

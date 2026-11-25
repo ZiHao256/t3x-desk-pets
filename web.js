@@ -103,6 +103,7 @@ const offCustom = host.storage.subscribe("custom", () => {
   controller.refresh();
 });
 const offMap = host.storage.subscribe("map", bumpCatalog);
+const offQuiet = host.storage.subscribe("quiet", controller.syncCalm);
 
 // 对应关系或宠物库变了，聊天视图里的组件要重新选宠物。
 function useCatalogVersion() {
@@ -123,10 +124,11 @@ function rememberSubs(key, version, map, done) {
   if (seenSubs.size > 20) seenSubs.delete(seenSubs.keys().next().value);
 }
 
-function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, error, runStatus, subagents }) {
+function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, error, runStatus, subagents, context, compacting }) {
   const catalogVersion = useCatalogVersion();
   const petId = petFor(driver, model, currentMap(), has);
   const mood = petMood({ awaiting, working: !!working, error: !!error });
+  const fill = contextFill(context);
   const prevRef = React.useRef(null);
   const pendingRef = React.useRef(false);
   const [visible, setVisible] = React.useState(() => controller.enabled());
@@ -148,6 +150,9 @@ function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, er
     if (petId) controller.update({ petId, mood });
     else controller.clear(); // 这个 agent 设成了不显示
   }, [embedded, petId, mood, visible]);
+  React.useEffect(() => {
+    if (!embedded && visible && petId) controller.updateSwell(threadKey, fill, compacting);
+  }, [embedded, visible, petId, threadKey, fill, compacting]);
   React.useEffect(() => {
     const cur = { key: threadKey, working: !!working, awaiting, error: !!error, runStatus };
     const prev = prevRef.current;
@@ -203,6 +208,7 @@ return () => {
   document.removeEventListener("contextmenu", onContextMenu, true);
   offCustom();
   offMap();
+  offQuiet();
   catalogListeners.clear();
   seenSubs.clear();
   controller.dispose();

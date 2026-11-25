@@ -7,6 +7,25 @@ function petMood({ awaiting, working, error }) {
   return "idle";
 }
 
+function contextFill(context) {
+  if (!Number.isFinite(context?.usedTokens)) return 0;
+  const limit = context.autoCompactThreshold > 0 ? context.autoCompactThreshold : context.maxTokens;
+  if (!Number.isFinite(limit) || limit <= 0) return 0;
+  return Math.max(0, Math.min(1, context.usedTokens / limit));
+}
+
+function fillLevel(fill) {
+  if (fill >= 0.95) return "full";
+  if (fill >= 0.8) return "high";
+}
+
+// compacting 属于当前会话：同一会话里从压缩中变成没在压缩才松气，换会话那一刻不算。
+function compactState(prev, threadKey, compacting, expired = false) {
+  if (compacting) return { threadKey, phase: "squeeze" };
+  const pop = prev?.threadKey === threadKey && !expired && (prev.phase === "pop" || prev.phase === "squeeze");
+  return { threadKey, phase: pop ? "pop" : undefined };
+}
+
 // 看向行：0 度朝上、顺时针 16 个方向，落在第 9、10 行。
 function lookFrame(dx, dy) {
   if (Math.hypot(dx, dy) <= 1) return null;
@@ -221,6 +240,9 @@ function findFreeSeat({ mainX, span, occupied = [], total = occupied.length, max
 if (typeof module === "object" && module.exports) {
   module.exports = {
     petMood,
+    contextFill,
+    fillLevel,
+    compactState,
     lookFrame,
     subagentEvents,
     resumeSubagents,
