@@ -1,9 +1,12 @@
 // 桌宠：每个 agent 一只，站在主输入框上沿；子代理各派一只到旁边干活。
-// 宠物 = 内置（pets/）+ 本机素材（构建时并入 local/）+ 设置里自己添加的；agent → 宠物的对应关系也在设置里改。
+// 宠物 = 内置（Codex + pets.js 里的 BUNDLED_PETS，精灵图在 pets/）+ 本机素材（构建时并入 local/，不公开）+ 设置里自己添加的；agent → 宠物的对应关系也在设置里改。
 const { React } = host;
 
 function bundledPets() {
-  const list = [{ id: "codex", name: "Codex", sheet: host.files.url("pets/codex/sheet.webp"), vars: { "--t3x-pet-scale": "1.1" }, source: "builtin" }];
+  const list = [
+    { id: "codex", name: "Codex", sheet: host.files.url("pets/codex/sheet.webp"), vars: { "--t3x-pet-scale": "1.1" }, source: "builtin" },
+    ...BUNDLED_PETS.map((p) => ({ ...p, sheet: host.files.url(`pets/${p.id}/sheet.webp`), source: "builtin" })),
+  ];
   for (const path of host.files.list()) {
     const m = /^local\/([^/]+)\/pet\.json$/.exec(path);
     if (m) list.push({ ...JSON.parse(host.files.text(path)), id: m[1], sheet: host.files.url(`local/${m[1]}/sheet.webp`), source: "local" });
