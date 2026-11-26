@@ -75,13 +75,15 @@ function Thumb({ pet, className = "" }) {
   });
 }
 
-function PetForm({ ui, initial, onDone }) {
+// initial：编辑已有的；draft：AI 生成的结果（{ name, sheet, smooth, pixelFx }），存成新的一只。
+function PetForm({ ui, initial, draft, title, extra, onDone, onSaved }) {
   host.useLang();
-  const [name, setName] = React.useState(initial?.name ?? "");
+  const base = initial ?? draft;
+  const [name, setName] = React.useState(base?.name ?? "");
   const [scale, setScale] = React.useState(String(Number(initial?.vars?.["--t3x-pet-scale"] ?? 1)));
-  const [pixel, setPixel] = React.useState(!initial?.smooth);
-  const [pixelFx, setPixelFx] = React.useState(initial?.pixelFx === true);
-  const [sheet, setSheet] = React.useState(initial?.sheet ?? null);
+  const [pixel, setPixel] = React.useState(!base?.smooth);
+  const [pixelFx, setPixelFx] = React.useState(base?.pixelFx === true);
+  const [sheet, setSheet] = React.useState(base?.sheet ?? null);
   const [fileName, setFileName] = React.useState("");
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false); // 读图或保存中：不能保存
@@ -125,16 +127,16 @@ function PetForm({ ui, initial, onDone }) {
       );
       setBusy(true);
       await host.storage.set("custom", [...custom.filter((p) => p.id !== id), def]); // 写盘成功再关表单
-      onDone();
+      await (onSaved ?? onDone)();
     } catch (e) {
       setError(e.message);
       setBusy(false);
     }
   };
 
-  const sectionTitle = initial
+  const sectionTitle = title ?? (initial
     ? host.t(`编辑桌宠：${initial.name}`, `Edit desk pet: ${initial.name}`)
-    : host.t("添加桌宠", "Add desk pet");
+    : host.t("添加桌宠", "Add desk pet"));
 
   return h(
     ui.Section,
@@ -195,6 +197,7 @@ function PetForm({ ui, initial, onDone }) {
         ),
       ),
     }),
+    sheet ? h("div", { className: "t3x-gen-block" }, h(SheetPlayer, { sheet, smooth: !pixel, scale })) : null,
     h(ui.Row, {
       title: host.t("缩放比例", "Scale"),
       description: host.t("调整桌宠在输入框上方的显示大小（0.5 – 2.0）", "Display size above the composer (0.5 – 2.0)"),
@@ -232,6 +235,7 @@ function PetForm({ ui, initial, onDone }) {
         "aria-label": host.t("像素风粒子特效", "Pixel-art particles"),
       }),
     }),
+    extra ?? null,
     h(
       "div",
       { className: "t3x-pet-form-foot" },
@@ -239,7 +243,7 @@ function PetForm({ ui, initial, onDone }) {
       h(
         "div",
         { className: "t3x-pet-form-actions" },
-        h(ui.Button, { type: "button", size: "xs", variant: "ghost", onClick: onDone }, host.t("取消", "Cancel")),
+        h(ui.Button, { type: "button", size: "xs", variant: "ghost", onClick: onDone }, draft ? host.t("收起", "Hide") : host.t("取消", "Cancel")),
         h(ui.Button, { type: "button", size: "xs", variant: "default", disabled: busy, onClick: save }, host.t("保存", "Save")),
       ),
     ),
@@ -250,7 +254,9 @@ function PetSettings({ ui }) {
   host.useLang();
   const saved = host.storage.use("map", {});
   host.storage.use("custom", []);
-  const [editing, setEditing] = React.useState(null); // null | "new" | 宠物 id
+  const gen = host.storage.use("gen", null);
+  // null | "new" | "gen"（AI 生成）| 宠物 id；有没做完的生成任务就直接打开它
+  const [editing, setEditing] = React.useState(() => (host.storage.get("gen", null) ? "gen" : null));
   const [removeError, setRemoveError] = React.useState(null);
   const map = { ...DEFAULT_MAP, ...saved };
   const list = [...pets.values()];
@@ -335,7 +341,9 @@ function PetSettings({ ui }) {
         });
       }),
     ),
-    editing
+    editing === "gen"
+      ? h(GenPanel, { ui, onClose: () => setEditing(null) })
+      : editing
       ? h(PetForm, {
           key: editing,
           ui,
@@ -349,9 +357,18 @@ function PetSettings({ ui }) {
         title: host.t("宠物库", "Pet library"),
         headerAction: !editing
           ? h(
-              ui.Button,
-              { size: "xs", variant: "outline", onClick: () => setEditing("new") },
-              host.t("添加桌宠", "Add desk pet"),
+              "div",
+              { className: "t3x-pet-header-actions" },
+              h(
+                ui.Button,
+                { size: "xs", variant: "outline", onClick: () => setEditing("gen") },
+                gen?.state === "review"
+                  ? host.t("调整生成的桌宠", "Review generated pet")
+                  : gen
+                    ? host.t("生成进度", "Generation progress")
+                    : host.t("AI 生成", "Generate with AI"),
+              ),
+              h(ui.Button, { size: "xs", variant: "outline", onClick: () => setEditing("new") }, host.t("添加桌宠", "Add desk pet")),
             )
           : null,
       },
