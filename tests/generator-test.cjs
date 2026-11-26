@@ -64,9 +64,9 @@ const byText = (tree, text) => {
   return n;
 };
 const later = () => {
-  let resolve;
-  const promise = new Promise((r) => (resolve = r));
-  return { promise, resolve };
+  let resolve, reject;
+  const promise = new Promise((r, j) => ((resolve = r), (reject = j)));
+  return { promise, resolve, reject };
 };
 const settle = () => new Promise((r) => setTimeout(r, 20));
 
@@ -297,6 +297,29 @@ module.exports = ({ test, readFiles, pets }) => {
     assert.equal(storage.get("gen").state, "running");
     await byText(page(), "用上一版").props.onClick();
     assert.deepEqual([storage.get("gen").state, storage.get("gen").round, storage.get("gen").sheetRound], ["review", 1, 0]);
+
+    // 修改发送途中关掉再打开面板、又点修改：第二条不发；第一条失败后不登记新一轮，可以再发
+    const feedback = (text) => findAll(page(), (n) => n.props.id === "t3x-gen-feedback")[0].props.onChange({ target: { value: text } });
+    feedback("眼睛大一点");
+    sendGate = later();
+    const firstRevise = byText(page(), "发给 agent 修改").props.onClick();
+    await settle();
+    const revisesSent = sent.length;
+    forget("GenPanel");
+    feedback("眼睛大一点");
+    await byText(page(), "发给 agent 修改").props.onClick();
+    assert.equal(sent.length, revisesSent, "上一条修改还在发时不发第二条");
+    assert.equal(findAll(page(), (n, t) => n.props.role === "alert" && t.includes("还在发送")).length, 1);
+    sendGate.reject(new Error("网络断了"));
+    await firstRevise;
+    assert.deepEqual([storage.get("gen").state, storage.get("gen").round], ["review", 1], "发送失败不登记新一轮");
+    sendGate = later();
+    const retry = byText(page(), "发给 agent 修改").props.onClick();
+    await settle();
+    assert.equal(sent.length, revisesSent + 1, "失败后可以再发");
+    sendGate.reject(new Error("网络又断了"));
+    await retry;
+    sendGate = null;
 
     // 再改一次：放弃发生在发送途中，回来后不能把任务写回去
     findAll(page(), (n) => n.props.id === "t3x-gen-feedback")[0].props.onChange({ target: { value: "再小一点" } });
