@@ -103,6 +103,10 @@ test("桌宠：agent → 宠物", () => {
   assert.equal(pets.findFreeSeat({ mainX: 482, span: 536, occupied: [76, 26], total: 2 }), 532);
   assert.equal(pets.findFreeSeat({ mainX: 300, span: 600, occupied: [350, 250], total: 3 }), undefined);
   assert.equal(pets.findFreeSeat({ mainX: 126, span: 140, occupied: [10, 26], total: 2 }), 76);
+  // 上限可设置：一侧到边时另一侧接着坐到第 max 个座位
+  assert.equal(pets.findFreeSeat({ mainX: 300, span: 600, occupied: [350, 250, 400, 200], total: 4, max: 5 }), 450);
+  assert.equal(pets.findFreeSeat({ mainX: 580, span: 600, occupied: [530, 480, 430], total: 3, max: 4 }), 380);
+  assert.equal(pets.findFreeSeat({ mainX: 300, span: 600, occupied: [350], total: 1, max: 1 }), undefined);
 });
 
 test("桌宠：上下文用量优先按压缩阈值计算并分档", () => {
@@ -161,6 +165,10 @@ test("桌宠：拖动碰头判定与分开站位", () => {
   assert.equal(third.afterTargetX, 300);
   assert.equal(third.afterMoverX, 350);
   assert(Math.abs(third.afterMoverX - 250) >= 50);
+
+  // 子宠物多（上限可到 10）时一直找到舞台边缘：190 是起拖时空出来的那格
+  const crowd = pets.resolveBumpPositions({ moverX: 585, moverFromX: 190, targetX: 590, span: 664, others: [540, 640, 490, 440, 390, 340, 290, 240] });
+  assert.equal(crowd.afterMoverX, 190);
 
   // 极窄舞台不越界
   const narrow = pets.resolveBumpPositions({ moverX: 10, moverFromX: 0, targetX: 20, span: 40 });

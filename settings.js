@@ -10,6 +10,9 @@ const agentLabels = () => ({
 });
 const SHEET_MAX_BYTES = 2 * 1024 * 1024;
 const SHEET_MAX_SIDE = 4096; // 解码前先看尺寸，挡住体积小、像素特别多的图
+const SUB_PET_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10];
+/** 子代理宠物最多同时显示几只；存储里的值不是可选项时按 3。 */
+const maxSubPets = (v = host.storage.get("maxSubs", 3)) => (SUB_PET_CHOICES.includes(v) ? v : 3);
 
 /** 读用户选的精灵图：限制大小、格式和 8x11 的比例，返回 data URL。 */
 async function readSheet(file) {
@@ -255,6 +258,7 @@ function PetSettings({ ui }) {
   const saved = host.storage.use("map", {});
   host.storage.use("custom", []);
   const gen = host.storage.use("gen", null);
+  const maxSubs = maxSubPets(host.storage.use("maxSubs", 3));
   // null | "new" | "gen"（AI 生成）| 宠物 id；有没做完的生成任务就直接打开它
   const [editing, setEditing] = React.useState(() => (host.storage.get("gen", null) ? "gen" : null));
   const [removeError, setRemoveError] = React.useState(null);
@@ -339,6 +343,31 @@ function PetSettings({ ui }) {
             ),
           ),
         });
+      }),
+    ),
+    h(
+      ui.Section,
+      { title: host.t("子代理", "Subagents") },
+      h(ui.Row, {
+        title: host.t("最多同时显示", "Show at most"),
+        description: host.t(
+          "主宠物两边最多站几只子代理的宠物（含正在离场的）；多出来的和输入框放不下的计入 “+N”",
+          "How many subagent pets can stand beside the main pet, including ones leaving; the rest, and any that don’t fit the composer, count toward “+N”",
+        ),
+        control: h(
+          ui.Select,
+          { value: String(maxSubs), onValueChange: (v) => v && host.storage.set("maxSubs", Number(v)) },
+          h(
+            ui.SelectTrigger,
+            { size: "sm", className: "w-full sm:w-52", "aria-label": host.t("最多同时显示", "Show at most") },
+            h(ui.SelectValue, null, host.t(`${maxSubs} 只`, String(maxSubs))),
+          ),
+          h(
+            ui.SelectPopup,
+            { align: "end", alignItemWithTrigger: false },
+            SUB_PET_CHOICES.map((n) => h(ui.SelectItem, { key: n, value: String(n) }, host.t(`${n} 只`, String(n)))),
+          ),
+        ),
       }),
     ),
     editing === "gen"

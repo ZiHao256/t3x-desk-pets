@@ -2,7 +2,6 @@
 // 子宠物落座后有自己的位置，可以单独拖动；主宠物走动时它们留在原地，只转头朝着主宠物。
 // ctx: { stage, main, span, create, destroy, place, play, motion, reduced, glance, cheer, badgeBottom }
 function createSubPets(ctx) {
-  const MAX = 3; // 主宠物两侧最多 3 只（含正在离场的），其余计入 "+N"
   const MAX_REPLAY = 12; // 后台/补播队列上限，避免长时间积压
   const GAP = 50;
   const subs = new Map(); // id -> { id, p, home, status, moving, dragging, bumping, bye, finishOk, leaveTimer, runRaf }
@@ -11,7 +10,7 @@ function createSubPets(ctx) {
   const replay = []; // 满座期间收工、等前一只离场后顺位补播的队列：[{ id, petId, status, finishOk }]
   const pending = new Map(); // 舞台或主宠物没就绪时先记下：id -> { petId, status, animate, finishOk }
   const farewells = [];
-  const signs = new Map(); // 在等你的子代理：id -> { label, hint, open }，举牌子，点牌子跳到它的会话
+  const signs = new Map(); // 在等你的子代理：id -> { needs, label, hint, open }，举牌子，点牌子跳到它的会话
   let current = null; // 正在告别的那只
   let badge = null;
 
@@ -30,9 +29,9 @@ function createSubPets(ctx) {
     findFreeSeat({
       mainX: ctx.main().x,
       span: maxSpan,
-      occupied: [...subs.values()].map((s) => s.home),
+      occupied: [...[...subs.values()].map((s) => s.home), ...[...exiting].map((p) => p.x)], // 离场中的还站在原地
       total: subs.size + exiting.size,
-      max: MAX,
+      max: ctx.max(), // 设置里的“最多同时显示”（含正在离场的），其余计入 "+N"
       gap: GAP,
     });
   const subOf = (p) => [...subs.values()].find((s) => s.p === p);
@@ -84,6 +83,7 @@ function createSubPets(ctx) {
       s.p.el.appendChild(s.sign);
     }
     if (s.sign.textContent !== want.label) s.sign.textContent = want.label;
+    if (s.sign.dataset.needs !== want.needs) s.sign.dataset.needs = want.needs; // 灯色：批准琥珀、回复青色
     s.sign.title = want.hint;
     s.sign.setAttribute("aria-label", `${want.label}：${want.hint}`);
   }
@@ -105,6 +105,8 @@ function createSubPets(ctx) {
     const waiting = [...extra.keys()].find((id) => signs.has(id));
     if (waiting !== undefined) badge.dataset.alert = "";
     else delete badge.dataset.alert;
+    if (waiting !== undefined) badge.dataset.needs = signs.get(waiting).needs ?? "approval"; // 灯色跟点了会打开的那只
+    else delete badge.dataset.needs;
     badge.title = waiting !== undefined ? signs.get(waiting).hint : "";
     badge.disabled = waiting === undefined; // 没人在等时只是个计数：不能聚焦，读屏也跳过
     badge.setAttribute("aria-hidden", String(waiting === undefined));
@@ -128,8 +130,10 @@ function createSubPets(ctx) {
     const curSpan = maxSpan ?? ctx.span();
     for (const s of subs.values()) if (!s.moving && !s.dragging && !s.bumping) seatAt(s, s.home, curSpan);
     const m = ctx.main();
-    // 舞台变宽或主宠落位后腾出座位时，把 +N 和待补播里的补入（主宠拖动/碰头途中不抢位）。
-    if ((extra.size || replay.length) && !m.held && !m.bumping) promote(curSpan);
+    // 舞台变宽或主宠落位后腾出座位时，把 +N 和待补播里的补入。拖动/碰头途中不抢位：
+    // 碰头双方的座位还没回写，碰完 setBumping 会再补。
+    const bumping = m.bumping || [...subs.values()].some((s) => s.bumping);
+    if ((extra.size || replay.length) && !m.held && !bumping) promote(curSpan);
     else syncBadge();
   }
 
@@ -397,7 +401,7 @@ function createSubPets(ctx) {
     layout,
     promote,
     reset,
-    // 在等你的子代理：Map<id, { label, hint, open }>，整份替换。
+    // 在等你的子代理：Map<id, { needs, label, hint, open }>，整份替换。
     signs(next) {
       signs.clear();
       for (const [id, sign] of next) signs.set(id, sign);

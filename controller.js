@@ -2,7 +2,7 @@
 // catalog.get(id) 给出宠物定义（sheet、badgeBottom 等），position 读写宠物在输入框上沿的位置比例。
 // quiet() 为真时宠物原地待着：不闲逛、不庆祝，子代理直接落座和离开；onMenu(ev) 处理右键宠物。
 // composer() 给出主输入框外壳（宿主的 host.dom.composer），没有时返回 null。
-function createPetController({ catalog, position, quiet, onMenu, composer }) {
+function createPetController({ catalog, position, quiet, maxSubs = () => 3, onMenu, composer }) {
   // 精灵图 8 列 x 11 行：行号 + 每帧时长（毫秒）。第 9、10 行是 16 个方向的看向帧。
   const ROWS = {
     idle: [0, [280, 110, 110, 140, 140, 320]],
@@ -594,6 +594,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
     place,
     play,
     motion,
+    max: maxSubs,
     reduced: () => reduced() || quiet(),
     glance,
     cheer: () => !quiet() && pet && !pet.exiting && pet.el.dataset.motion === "idle" && play(pet, "jumping", { once: true }),
@@ -731,6 +732,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
   return {
     updateSwell,
     syncCalm,
+    layoutSubs: () => subPets.layout(), // 上限调大后把 +N 里的补进来；调小时已在场的待到离场
     update(next) {
       clearTimeout(detachTimer);
       detachTimer = 0;

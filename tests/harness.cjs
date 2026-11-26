@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const read = (p) => fs.readFileSync(path.join(__dirname, "..", p), "utf8");
 
 // 最小 DOM + 可控时钟替身，用于回归桌宠状态机（离场、碰头、指针、补播、布局读取、rAF 清理）。
-function createPetsHarness({ stageWidth = 600, focused = true, hidden = false, quiet = () => false } = {}) {
+function createPetsHarness({ stageWidth = 600, focused = true, hidden = false, quiet = () => false, maxSubs } = {}) {
   let now = 0;
   let nextTimerId = 1;
   let nextRafId = 1;
@@ -185,6 +185,7 @@ function createPetsHarness({ stageWidth = 600, focused = true, hidden = false, q
     catalog,
     position: { get: () => posVal, set: (v) => (posVal = v) },
     quiet,
+    maxSubs,
     onMenu: () => ctrl.hide(),
     composer: () => hostEl,
   });

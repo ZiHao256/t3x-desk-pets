@@ -38,6 +38,7 @@ const controller = createPetController({
   catalog: { get: (id) => pets.get(id) },
   position: { get: () => host.storage.get("x", 0.9), set: (v) => host.storage.set("x", v) },
   quiet: isQuiet,
+  maxSubs: () => maxSubPets(),
   onMenu: (ev) => openMenu(ev, true),
   composer: host.dom.composer,
 });
@@ -104,6 +105,7 @@ const offCustom = host.storage.subscribe("custom", () => {
 });
 const offMap = host.storage.subscribe("map", bumpCatalog);
 const offQuiet = host.storage.subscribe("quiet", controller.syncCalm);
+const offMaxSubs = host.storage.subscribe("maxSubs", controller.layoutSubs);
 
 // 对应关系或宠物库变了，聊天视图里的组件要重新选宠物。
 function useCatalogVersion() {
@@ -209,6 +211,7 @@ function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, er
     const signs = JSON.parse(signKey).map(([id, needs, environmentId, threadId]) => [
       id,
       {
+        needs,
         label: needs === "approval" ? host.t("等你批准", "Approve?") : host.t("等你回复", "Reply?"),
         hint: host.t("点一下打开这个子代理的会话", "Open this subagent’s thread"),
         open: () => host.agent.open({ environmentId, threadId }),
@@ -234,6 +237,7 @@ return () => {
   offCustom();
   offMap();
   offQuiet();
+  offMaxSubs();
   catalogListeners.clear();
   seenSubs.clear();
   controller.dispose();

@@ -79,6 +79,64 @@ module.exports = (test) => {
     assert.equal(h.rafs.size, 0);
   });
 
+  test("桌宠：子代理宠物上限可设置，调大补进 +N 里的，调小不赶走在场的", () => {
+    let max = 5;
+    const h = createPetsHarness({ stageWidth: 1200, maxSubs: () => max });
+    h.ctrl.update({ petId: "codex", mood: "idle" });
+    h.advance(50);
+    h.finishAnim(h.mainEls()[0]);
+    const seat = (id) => ({ type: "seat", id, petId: "codex", status: "running" });
+    h.ctrl.subagents(["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map(seat), true);
+    assert.equal(h.subEls().length, 5);
+    assert.equal(h.badgeEl().textContent, "+2");
+    max = 6;
+    h.ctrl.layoutSubs();
+    assert.equal(h.subEls().length, 6);
+    assert.equal(h.badgeEl().textContent, "+1");
+    max = 2;
+    h.ctrl.layoutSubs();
+    h.ctrl.subagents([seat("s8")], false);
+    assert.equal(h.subEls().length, 6, "调小后已在场的不赶走");
+    assert.equal(h.badgeEl().textContent, "+2");
+    // 补进来的那只是跑进场的：跑完、打完招呼再看落点
+    for (let i = 0; i < 120; i++) h.stepRaf();
+    for (const el of h.subEls()) if (el.dataset.motion !== "idle") h.finishAnim(el);
+    assert(h.subEls().every((el) => el.dataset.motion === "idle"));
+    const xs = [h.mainEls()[0], ...h.subEls()].map((el) => Number.parseFloat(el.style.left)).sort((a, b) => a - b);
+    assert(xs.every((x, i) => i === 0 || x - xs[i - 1] >= 25), `7 只各站各的：${xs}`);
+  });
+
+  test("桌宠：两只子宠物碰头期间调大上限，补进来的不和它们抢同一个座位", () => {
+    let max = 2;
+    const h = createPetsHarness({ stageWidth: 600, maxSubs: () => max });
+    h.ctrl.update({ petId: "codex", mood: "idle" });
+    h.advance(50);
+    h.finishAnim(h.mainEls()[0]);
+    h.ctrl.subagents(["s1", "s2", "s3"].map((id) => ({ type: "seat", id, petId: "codex", status: "running" })), true);
+    const [a, b] = h.subEls();
+    h.finishAnim(a);
+    h.finishAnim(b);
+    assert.equal(h.badgeEl().textContent, "+1");
+    const bx = Number.parseFloat(b.style.left);
+    a.dispatch("pointerdown", { pointerId: 5, clientX: Number.parseFloat(a.style.left) });
+    a.dispatch("pointermove", { pointerId: 5, clientX: bx });
+    a.dispatch("pointerup", { pointerId: 5, clientX: bx });
+    assert.equal(b.dataset.motion, "bump");
+    max = 3;
+    h.ctrl.layoutSubs();
+    assert.equal(h.subEls().length, 2, "碰头途中不补位");
+    for (let i = 0; i < 20 && (a.dataset.motion === "bump" || b.dataset.motion === "bump"); i++) {
+      for (const el of [a, b]) if (el.dataset.motion === "bump") h.finishAnim(el);
+      for (let j = 0; j < 60; j++) h.stepRaf();
+    }
+    assert.equal(h.subEls().length, 3, "碰完补进来");
+    assert.equal(h.badgeEl(), null);
+    for (let i = 0; i < 120; i++) h.stepRaf();
+    for (const el of h.subEls()) if (el.dataset.motion !== "idle") h.finishAnim(el);
+    const xs = [h.mainEls()[0], ...h.subEls()].map((el) => Number.parseFloat(el.style.left)).sort((x, y) => x - y);
+    assert(xs.every((x, i) => i === 0 || x - xs[i - 1] >= 25), `4 只各站各的：${xs}`);
+  });
+
   test("桌宠：在等你的子代理举牌子，点了跳转；收工放下；挤在 +N 里时徽标代它举", () => {
     const h = createPetsHarness({ stageWidth: 1200 });
     h.ctrl.update({ petId: "codex", mood: "idle" });
@@ -89,13 +147,14 @@ module.exports = (test) => {
     assert.equal(h.subEls().length, 3);
     assert.equal(h.badgeEl().textContent, "+1");
     const opened = [];
-    const sign = (id) => ({ label: "等你批准", hint: "打开会话", open: () => opened.push(id) });
+    const sign = (id, needs = "approval") => ({ needs, label: needs === "input" ? "等你回复" : "等你批准", hint: "打开会话", open: () => opened.push(id) });
     h.ctrl.signs(new Map([["s2", sign("s2")]]));
     const signOf = (el) => el.children.find((c) => c.className === "t3x-pet-sign");
     const [a, b] = h.subEls();
     assert.equal(signOf(a), undefined);
     const placard = signOf(b);
     assert.equal(placard.textContent, "等你批准");
+    assert.equal(placard.dataset.needs, "approval");
     let stopped = 0;
     const ev = { stopPropagation: () => (stopped += 1) };
     let prevented = 0;
@@ -108,8 +167,10 @@ module.exports = (test) => {
     assert.equal(h.badgeEl().dataset.alert, undefined, "+N 里没人在等");
     assert.equal(h.badgeEl().disabled, true, "没人在等时徽标只是计数，不能聚焦");
 
-    h.ctrl.signs(new Map([["s2", sign("s2")], ["s4", sign("s4")]]));
+    h.ctrl.signs(new Map([["s2", sign("s2", "input")], ["s4", sign("s4", "input")]]));
+    assert.equal(placard.dataset.needs, "input", "等回复换青色灯");
     assert.equal(h.badgeEl().dataset.alert, "", "挤在 +N 里的 s4 在等：徽标变成牌子");
+    assert.equal(h.badgeEl().dataset.needs, "input", "徽标灯色跟 s4 一样");
     assert.equal(h.badgeEl().disabled, false);
     h.badgeEl().dispatch("click", ev);
     assert.deepEqual(opened, ["s2", "s4"]);

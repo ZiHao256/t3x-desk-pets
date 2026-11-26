@@ -237,68 +237,127 @@ html.dark .t3x-pet-badge {
 }
 
 /* ==========================================================================
-   在等你的子代理举的牌子（.t3x-pet-sign，挂在子宠物上）：点了跳到它的会话
+   在等你的子代理举的牌子（.t3x-pet-sign，挂在子宠物上）：一块像素风的小电子屏，点了跳到它的会话。
+   挤在 +N 里的在等你时，徽标（.t3x-pet-badge[data-alert]）也换成同一块屏。
+   灯色：等批准琥珀色，等回复（data-needs="input"）青色。
    ========================================================================== */
+
+.t3x-pet-sign,
+.t3x-pet-badge[data-alert],
+html.dark .t3x-pet-badge[data-alert] /* 盖过深色模式下普通徽标的背景和阴影 */ {
+  --t3x-led: #ffb000;
+  --t3x-led-glow: rgba(255, 176, 0, 0.55);
+  --t3x-led-dim: rgba(255, 176, 0, 0.13);
+  --t3x-screen-frame: #3a3f47;
+  --t3x-screen-edge: #12151a;
+  --t3x-screen-drop: rgba(15, 23, 42, 0.22);
+  border: 0;
+  border-radius: 0;
+  color: var(--t3x-led);
+  text-shadow: 0 0 1px var(--t3x-led), 0 0 4px var(--t3x-led-glow), 0 0 9px var(--t3x-led-dim);
+  /* 上到下：玻璃反光、扫描线、没点亮的点阵、屏幕底色 */
+  background:
+    linear-gradient(162deg, rgba(255, 255, 255, 0.11) 0 28%, transparent 28%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.38) 0 1px, transparent 1px 2px),
+    radial-gradient(circle, var(--t3x-led-dim) 0 0.7px, transparent 0.9px) 0 0 / 3px 3px,
+    linear-gradient(180deg, #10151b, #05070a);
+  /* 像素边框：同尺寸的盒子上下左右各挪一格，拼出切角的边框和外沿；最后是落在下面的像素投影 */
+  box-shadow:
+    inset 0 0 0 1px #000,
+    inset 0 0 10px var(--t3x-led-dim),
+    0 -2px 0 var(--t3x-screen-frame),
+    0 2px 0 var(--t3x-screen-frame),
+    -2px 0 0 var(--t3x-screen-frame),
+    2px 0 0 var(--t3x-screen-frame),
+    0 -3px 0 var(--t3x-screen-edge),
+    0 3px 0 var(--t3x-screen-edge),
+    -3px 0 0 var(--t3x-screen-edge),
+    3px 0 0 var(--t3x-screen-edge),
+    0 6px 0 var(--t3x-screen-drop);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.t3x-pet-sign[data-needs="input"],
+.t3x-pet-badge[data-alert][data-needs="input"].t3x-pet-badge {
+  --t3x-led: #3ee6c4;
+  --t3x-led-glow: rgba(62, 230, 196, 0.55);
+  --t3x-led-dim: rgba(62, 230, 196, 0.13);
+}
+
+html.dark .t3x-pet-sign,
+html.dark .t3x-pet-badge[data-alert].t3x-pet-badge {
+  --t3x-screen-frame: #4b515b;
+  --t3x-screen-edge: #07090c;
+  --t3x-screen-drop: rgba(0, 0, 0, 0.4);
+}
 
 .t3x-pet-sign {
   appearance: none;
   -webkit-appearance: none;
   position: absolute;
   left: 50%;
-  /* --t3x-pet-sign-y：头顶离脚底多高（宠物定义里按身高设，没设按 Codex 的身高），木棍下端落在那里 */
-  bottom: calc(var(--t3x-pet-sign-y, 56px) + 8px);
+  /* --t3x-pet-sign-y：头顶离脚底多高（宠物定义里按身高设，没设按 Codex 的身高），杆子下端落在那里；12px 是杆长 */
+  bottom: calc(var(--t3x-pet-sign-y, 56px) + 12px);
   z-index: 3;
   margin: 0;
-  padding: 2px 7px;
-  border-radius: 6px;
-  border: 1px solid rgba(180, 83, 9, 0.34);
-  font: 650 11px/1.35 system-ui, -apple-system, "PingFang SC", sans-serif;
+  padding: 4px 7px 4px 15px; /* 左边留给指示灯 */
+  font: 700 10px/1 ui-monospace, "SF Mono", Menlo, "PingFang SC", monospace;
+  letter-spacing: 0.12em;
   white-space: nowrap;
-  color: #92400e;
-  background: #fffbeb;
-  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.18);
   cursor: pointer;
   pointer-events: auto;
   translate: -50% 0;
-  transform-origin: 50% calc(100% + 8px); /* 绕木棍底端晃 */
+  transform-origin: 50% 50%;
   animation:
-    t3x-pet-sign-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    t3x-pet-sign-wave 2.4s ease-in-out 260ms infinite;
+    t3x-pet-sign-on 340ms steps(6, end) backwards, /* 不向后保持：末帧的 filter 会压住 :hover 增亮 */
+    t3x-pet-sign-bob 1.2s steps(1, end) 340ms infinite,
+    t3x-pet-sign-flicker 5.2s linear 340ms infinite;
 }
 
+/* 指示灯：一颗方形 LED，一闪一闪 */
+.t3x-pet-sign::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  background: var(--t3x-led);
+  box-shadow: 0 0 3px var(--t3x-led), 0 0 7px var(--t3x-led-glow);
+  animation: t3x-pet-sign-blink 1.1s steps(1, end) infinite;
+}
+
+/* 杆子：顶端一块托板，杆身左亮右暗 */
 .t3x-pet-sign::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 100%;
-  width: 2px;
-  height: 8px;
-  translate: -50% 1px;
-  border-radius: 0 0 1px 1px;
-  background: #b45309;
+  width: 7px;
+  height: 12px;
+  translate: -50% 0;
+  background:
+    linear-gradient(var(--t3x-screen-frame), var(--t3x-screen-frame)) top center / 7px 2px no-repeat,
+    linear-gradient(90deg, #a1a7b0 0 1px, #6b7280 1px 2px, #3f4550 2px 3px) center / 3px 100% no-repeat;
 }
 
-.t3x-pet-sign:hover { background: #fef3c7; }
-.t3x-pet-sign:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+.t3x-pet-sign:hover { filter: brightness(1.18); }
+.t3x-pet-sign:focus-visible,
+.t3x-pet-badge[data-alert]:focus-visible { outline: 2px solid var(--t3x-led); outline-offset: 4px; }
 
 .t3x-pet-badge[data-alert] {
   pointer-events: auto;
   cursor: pointer;
-  color: #92400e;
-  background: #fffbeb;
-  border-color: rgba(180, 83, 9, 0.34);
+  height: 14px;
+  padding: 0 5px;
 }
-.t3x-pet-badge[data-alert]::before { content: "!"; margin-right: 2px; }
-
-html.dark .t3x-pet-sign,
-html.dark .t3x-pet-badge[data-alert] {
-  color: #fde68a;
-  background: #3b2106;
-  border-color: rgba(251, 191, 36, 0.42);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+.t3x-pet-badge[data-alert]::before {
+  content: "!";
+  margin-right: 3px;
+  animation: t3x-pet-sign-blink 1.1s steps(1, end) infinite;
 }
-html.dark .t3x-pet-sign:hover { background: #4a2a08; }
-html.dark .t3x-pet-sign::after { background: #d97706; }
 
 /* ==========================================================================
    Keyframes · Body（仅 transform / opacity / filter）
@@ -421,15 +480,30 @@ html.dark .t3x-pet-sign::after { background: #d97706; }
   100% { opacity: 0;    transform: translate3d(-50%, 10px, 0) scale(0.75, 1.15); }
 }
 
-@keyframes t3x-pet-sign-up {
-  from { opacity: 0; transform: translate3d(0, 6px, 0) scale(0.6); }
-  to   { opacity: 1; transform: none; }
+/* 开机：像老显像管，先亮一条横线再撑开 */
+@keyframes t3x-pet-sign-on {
+  0%   { opacity: 0; transform: scale(0.3, 0.08); filter: brightness(2.4); }
+  35%  { opacity: 1; transform: scale(1, 0.08);   filter: brightness(2.4); }
+  70%  { transform: scale(1, 1.08); filter: brightness(1.4); }
+  100% { opacity: 1; transform: none; filter: none; }
 }
 
-@keyframes t3x-pet-sign-wave {
-  0%, 100% { transform: rotate(0deg); }
-  25%      { transform: rotate(-5deg); }
-  75%      { transform: rotate(5deg); }
+/* 举着的屏按像素节奏上下轻跳 */
+@keyframes t3x-pet-sign-bob {
+  0%  { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+/* 偶尔闪一下屏 */
+@keyframes t3x-pet-sign-flicker {
+  0%, 91%, 93%, 95.5%, 100% { opacity: 1; }
+  92%  { opacity: 0.55; }
+  94.5% { opacity: 0.78; }
+}
+
+@keyframes t3x-pet-sign-blink {
+  0%  { opacity: 1; }
+  60% { opacity: 0.25; }
 }
 
 @keyframes t3x-pet-badge-pop {
@@ -474,5 +548,10 @@ html.dark .t3x-pet-sign::after { background: #d97706; }
 
   .t3x-pet-sign {
     animation: t3x-pet-reduced-in 150ms ease-out both;
+  }
+
+  .t3x-pet-sign::before,
+  .t3x-pet-badge[data-alert]::before {
+    animation: none;
   }
 }

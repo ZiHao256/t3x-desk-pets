@@ -185,14 +185,9 @@ function resolveBumpPositions({ moverX, moverFromX = moverX, targetX, span, othe
 
   // 分开时尽量让被碰到的宠物留在原地，主动拖来的宠物退开到不重叠且不撞第三只的位置。
   const sep = Math.min(minGap, max);
-  const candList = [
-    tx + side * sep,
-    tx - side * sep,
-    tx + side * sep * 2,
-    tx - side * sep * 2,
-    tx + side * sep * 3,
-    tx - side * sep * 3,
-  ];
+  // 被碰那只两边一格、两格……直到舞台边缘（子宠物最多 10 只），最后试起拖时空出来的位置
+  const steps = sep > 0 ? Math.ceil(max / sep) : 0;
+  const candList = [...Array.from({ length: steps * 2 }, (_, i) => tx + (i % 2 ? -side : side) * sep * (Math.floor(i / 2) + 1)), clamp(moverFromX)];
   for (const x of candList) {
     if (x >= 0 && x <= max && Math.abs(x - tx) >= sep - 0.5 && clearOfOthers(x, minGap - 4)) {
       return { meetMoverX, meetTargetX, afterMoverX: x, afterTargetX: tx, side };
@@ -234,7 +229,8 @@ function resolveBumpPositions({ moverX, moverFromX = moverX, targetX, span, othe
 function findFreeSeat({ mainX, span, occupied = [], total = occupied.length, max = 3, gap = 50 }) {
   if (total >= max) return undefined;
   const maxX = Math.max(0, Number(span) || 0);
-  const candidates = [1, -1, 2, -2, 3, -3].map((k) => mainX + k * gap).filter((x) => x >= 0 && x <= maxX);
+  // 右 1、左 1、右 2、左 2……一侧被舞台边缘挡住时另一侧多坐几只，总数仍受 max 限制
+  const candidates = Array.from({ length: max * 2 }, (_, i) => mainX + (i % 2 ? -1 : 1) * (Math.floor(i / 2) + 1) * gap).filter((x) => x >= 0 && x <= maxX);
   return candidates.find((x) => !occupied.some((ox) => Math.abs(ox - x) < gap / 2));
 }
 
