@@ -105,6 +105,10 @@ Pet definitions (entries in `pets.js`; pets added in Settings use the same field
 1. Change the code, bump `version` in `plugin.json`, run `npm test`, and commit.
 2. Tag that commit `v<version>`, push it with the tag, and publish a GitHub release ("Check for updates" reads the latest release).
 
+## Community
+
+This project takes part in and recognizes the [LINUX DO community](https://linux.do).
+
 ## License
 
 MIT
