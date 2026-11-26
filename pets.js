@@ -7,6 +7,7 @@ const BUNDLED_PETS = [
   "pixelFx": true,
   "badgeBottom": 40,
   "vars": {
+    "--t3x-pet-sign-y": "33px",
     "--t3x-pet-scale": "1.125",
     "--t3x-pet-sink": "calc(var(--t3x-pet-w) * 0.114)",
     "--t3x-pet-shadow-bottom": "calc(var(--t3x-pet-w) * 0.066)",
@@ -40,6 +41,7 @@ const BUNDLED_PETS = [
   "pixelFx": false,
   "badgeBottom": 54,
   "vars": {
+    "--t3x-pet-sign-y": "58px",
     "--t3x-pet-sink": "calc(var(--t3x-pet-w) * 0.105)",
     "--t3x-pet-shadow-bottom": "calc(var(--t3x-pet-w) * 0.056)",
     "--t3x-pet-origin-y": "93%",
@@ -69,6 +71,7 @@ const BUNDLED_PETS = [
   "pixelFx": false,
   "badgeBottom": 56,
   "vars": {
+    "--t3x-pet-sign-y": "67px",
     "--t3x-pet-scale": "0.95",
     "--t3x-pet-sink": "calc(var(--t3x-pet-w) * 0.066)",
     "--t3x-pet-shadow-bottom": "calc(var(--t3x-pet-w) * 0.017)",

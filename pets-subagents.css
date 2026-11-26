@@ -195,6 +195,9 @@ html.dark .t3x-pet[data-role="sub"] {
    ========================================================================== */
 
 .t3x-pet-badge {
+  appearance: none; /* 是按钮：挤在 +N 里的子代理在等你时可以点 */
+  -webkit-appearance: none;
+  margin: 0;
   position: absolute;
   z-index: 4;
   display: inline-flex;
@@ -232,6 +235,70 @@ html.dark .t3x-pet-badge {
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
 }
+
+/* ==========================================================================
+   在等你的子代理举的牌子（.t3x-pet-sign，挂在子宠物上）：点了跳到它的会话
+   ========================================================================== */
+
+.t3x-pet-sign {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  left: 50%;
+  /* --t3x-pet-sign-y：头顶离脚底多高（宠物定义里按身高设，没设按 Codex 的身高），木棍下端落在那里 */
+  bottom: calc(var(--t3x-pet-sign-y, 56px) + 8px);
+  z-index: 3;
+  margin: 0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(180, 83, 9, 0.34);
+  font: 650 11px/1.35 system-ui, -apple-system, "PingFang SC", sans-serif;
+  white-space: nowrap;
+  color: #92400e;
+  background: #fffbeb;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.18);
+  cursor: pointer;
+  pointer-events: auto;
+  translate: -50% 0;
+  transform-origin: 50% calc(100% + 8px); /* 绕木棍底端晃 */
+  animation:
+    t3x-pet-sign-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    t3x-pet-sign-wave 2.4s ease-in-out 260ms infinite;
+}
+
+.t3x-pet-sign::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 8px;
+  translate: -50% 1px;
+  border-radius: 0 0 1px 1px;
+  background: #b45309;
+}
+
+.t3x-pet-sign:hover { background: #fef3c7; }
+.t3x-pet-sign:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+
+.t3x-pet-badge[data-alert] {
+  pointer-events: auto;
+  cursor: pointer;
+  color: #92400e;
+  background: #fffbeb;
+  border-color: rgba(180, 83, 9, 0.34);
+}
+.t3x-pet-badge[data-alert]::before { content: "!"; margin-right: 2px; }
+
+html.dark .t3x-pet-sign,
+html.dark .t3x-pet-badge[data-alert] {
+  color: #fde68a;
+  background: #3b2106;
+  border-color: rgba(251, 191, 36, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+html.dark .t3x-pet-sign:hover { background: #4a2a08; }
+html.dark .t3x-pet-sign::after { background: #d97706; }
 
 /* ==========================================================================
    Keyframes · Body（仅 transform / opacity / filter）
@@ -354,6 +421,17 @@ html.dark .t3x-pet-badge {
   100% { opacity: 0;    transform: translate3d(-50%, 10px, 0) scale(0.75, 1.15); }
 }
 
+@keyframes t3x-pet-sign-up {
+  from { opacity: 0; transform: translate3d(0, 6px, 0) scale(0.6); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes t3x-pet-sign-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-5deg); }
+  75%      { transform: rotate(5deg); }
+}
+
 @keyframes t3x-pet-badge-pop {
   0%   { opacity: 0; transform: translate3d(0, 4px, 0) scale(0.58); }
   58%  { opacity: 1; transform: translate3d(0, -1px, 0) scale(1.12); }
@@ -392,5 +470,9 @@ html.dark .t3x-pet-badge {
 
   .t3x-pet[data-role="sub"][data-motion="sub-droop"] .t3x-pet-body {
     animation: t3x-pet-reduced-droop 150ms ease-out both;
+  }
+
+  .t3x-pet-sign {
+    animation: t3x-pet-reduced-in 150ms ease-out both;
   }
 }

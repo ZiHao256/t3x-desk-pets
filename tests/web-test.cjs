@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const vm = require("node:vm");
 
 module.exports = ({ test, readFiles }) => {
-  test("桌宠：卸载聊天视图期间改映射会使 seenSubs 失效", () => {
+  test("桌宠：卸载聊天视图期间改映射会使 seenSubs 失效；在等你的子代理举牌子，点了跳到它的会话", () => {
     const ext = readFiles();
     const code = [].concat(ext.manifest.entries.web).map((p) => ext.files[p]).join("\n;\n");
     const storage = new Map();
@@ -41,6 +41,7 @@ module.exports = ({ test, readFiles }) => {
           effects.push(fn);
         },
         useReducer: () => [],
+        useMemo: (fn) => fn(),
         reset() {
           states = [];
           refs = [];
@@ -66,10 +67,14 @@ module.exports = ({ test, readFiles }) => {
       cancelAnimationFrame() {},
       console,
     });
+    let threads = [];
+    const opened = [];
     const hostObj = {
       id: "desk-pets",
       React: react,
       h: () => null,
+      t: (zh) => zh,
+      agent: { useThreads: () => threads, open: (ref) => opened.push(ref) },
       register: (slot, c) => {
         if (slot === "chat.overlay") Overlay = c;
       },
@@ -99,6 +104,8 @@ module.exports = ({ test, readFiles }) => {
       ctx,
     )(hostObj);
     ctx.__ctrl.subagents = (events, fresh) => dispatched.push({ events, fresh });
+    const signed = [];
+    ctx.__ctrl.signs = (next) => signed.push(next);
 
     const renderOverlay = (props) => {
       react.begin();
@@ -113,6 +120,28 @@ module.exports = ({ test, readFiles }) => {
     hostObj.storage.set("map", { cursor: "none" });
     renderOverlay(props);
     assert.equal(dispatched.at(-1).events.length, 0, "改映射后重挂不应复用旧 seenSubs 发出 seat");
+    assert.equal(signed.at(-1).size, 0, "没人在等你就不举牌子");
+
+    // 子代理 c2、c3 各有自己的会话；c2 的在等批准，c3 的在等回答，c4 是模型自带的（没有 childThreadId），旧宿主没有 needs 的 c5 不算
+    threads = [
+      { environmentId: "env-1", threadId: "child-2", needs: "approval" },
+      { environmentId: "env-1", threadId: "child-3", needs: "input" },
+      { environmentId: "env-1", threadId: "child-5" },
+    ];
+    renderOverlay({
+      ...props,
+      subagents: [
+        { id: "c2", status: "waiting", childThreadId: "child-2" },
+        { id: "c3", status: "waiting", childThreadId: "child-3" },
+        { id: "c4", status: "waiting", childThreadId: null },
+        { id: "c5", status: "running", childThreadId: "child-5" },
+      ],
+    });
+    const signs = signed.at(-1);
+    assert.deepEqual([...signs.keys()], ["c2", "c3"]);
+    assert.deepEqual([signs.get("c2").label, signs.get("c3").label], ["等你批准", "等你回复"]);
+    signs.get("c2").open();
+    assert.deepEqual(opened.map((r) => ({ ...r })), [{ environmentId: "env-1", threadId: "child-2" }], "点牌子跳到子代理自己的会话"); // vm 里建的对象，拷一份再比
     cleanup();
   });
 

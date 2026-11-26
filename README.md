@@ -26,6 +26,7 @@
 - 主 agent 派出子代理（T3 里登记为子代理的都算，比如 Claude 的子 agent、`delegate_task` 委派给 Codex 等其他 provider 的任务）时，对应 agent 的宠物跑过来打招呼，落座后埋头干活；主宠物会转头看它一眼。
 - 子代理完成时和主宠物击掌后离开，失败时垂头一会儿再走，离得太远够不着时挥手告别；好几只同时收工就排队依次告别。
 - 坐不下时显示“+N”，腾出座位再补上来。切到别的会话再回来，离开期间的进出场会补播。
+- 有自己会话的子代理（`delegate_task` 这类）在等你批准或回复时，它的宠物举起牌子，点牌子跳到那个子代理的会话；挤在“+N”里的在等你时，徽标变成“! +N”，点它跳到第一个在等的。需要宿主 0.5.0 起；模型自带的子代理（比如 Claude 的子 agent）没有自己的会话，不举牌子。
 
 ![Clawd 干活时，Codex、Moffy、Dafeiyu 三个子代理的宠物依次跑来落座；Codex 完成后和 Clawd 击掌离开，Moffy 失败垂头后离开，Dafeiyu 离得远，挥手告别](docs/pets-subagents.gif)
 
@@ -98,7 +99,7 @@
 | 4 | 跳 | 9–10 | 16 个方向的看向帧（0° 朝上顺时针） |
 | 5 | 失败 | | |
 
-宠物定义（`pets.js` 里的条目，设置里添加的宠物也用这些字段）：`name`、`scale`（0.5–2）、`pixelFx`（粒子用像素方块）、`smooth`（非像素画）、`badgeBottom`（子代理 “+N” 徽标高度）、`vars` / `darkVars`（`--t3x-pet-*`、`--t3x-sub-*` CSS 变量，用来校准落地位置和粒子颜色，见 `pets.css` 的默认值）。自带的 Codex 风格宠物由 `tools/codex_atlas.py` 用代码逐帧画出。
+宠物定义（`pets.js` 里的条目，设置里添加的宠物也用这些字段）：`name`、`scale`（0.5–2）、`pixelFx`（粒子用像素方块）、`smooth`（非像素画）、`badgeBottom`（子代理 “+N” 徽标高度）、`vars` 里的 `--t3x-pet-sign-y`（头顶离脚底多高，子代理举的牌子的木棍落在这里，默认 56px）、`vars` / `darkVars`（`--t3x-pet-*`、`--t3x-sub-*` CSS 变量，用来校准落地位置和粒子颜色，见 `pets.css` 的默认值）。自带的 Codex 风格宠物由 `tools/codex_atlas.py` 用代码逐帧画出。
 
 ## 发版
 

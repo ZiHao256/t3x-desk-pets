@@ -191,6 +191,31 @@ function PetsOverlay({ embedded, driver, model, threadKey, awaiting, working, er
     rememberSubs(threadKey, catalogVersion, next, done);
     if (fresh || events.length) controller.subagents(events, fresh);
   }, [embedded, threadKey, subagents, visible, catalogVersion]);
+  // 子代理在等你（批准或回答）时举牌子，点牌子跳到它的会话。只认得出 T3 派出、有自己会话（childThreadId）的子代理；
+  // 会话列表的 needs 是宿主 0.5.0 起才有的，旧宿主上不举牌子。
+  const threads = host.agent.useThreads();
+  const signKey = React.useMemo(() => {
+    const byId = new Map(threads.map((t) => [t.threadId, t]));
+    const list = [];
+    for (const s of subagents ?? []) {
+      if (!["pending", "running", "waiting"].includes(s?.status)) continue; // 收工了的不举
+      const t = typeof s?.childThreadId === "string" ? byId.get(s.childThreadId) : undefined;
+      if (t?.needs === "approval" || t?.needs === "input") list.push([s.id, t.needs, t.environmentId, t.threadId]);
+    }
+    return JSON.stringify(list);
+  }, [threads, subagents]);
+  React.useEffect(() => {
+    if (embedded || !visible) return;
+    const signs = JSON.parse(signKey).map(([id, needs, environmentId, threadId]) => [
+      id,
+      {
+        label: needs === "approval" ? host.t("等你批准", "Approve?") : host.t("等你回复", "Reply?"),
+        hint: host.t("点一下打开这个子代理的会话", "Open this subagent’s thread"),
+        open: () => host.agent.open({ environmentId, threadId }),
+      },
+    ]);
+    controller.signs(new Map(signs));
+  }, [embedded, visible, signKey]);
   React.useEffect(
     () => () => {
       if (!embedded) controller.detach();

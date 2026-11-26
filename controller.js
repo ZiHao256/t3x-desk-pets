@@ -677,8 +677,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
     if (!host) return false;
     if (!stage) {
       stage = document.createElement("div");
-      stage.className = "t3x-pet-stage";
-      stage.setAttribute("aria-hidden", "true");
+      stage.className = "t3x-pet-stage"; // 不整个 aria-hidden：子代理举的牌子要读屏能找到，宠物本身没有文字
       document.addEventListener("pointermove", onPointerMove, { passive: true });
       document.addEventListener("visibilitychange", onVisible);
       window.addEventListener("focus", catchUp);
@@ -764,6 +763,7 @@ function createPetController({ catalog, position, quiet, onMenu, composer }) {
       missed.push(...later);
       subPets.apply(later.length ? events.filter((e) => e.type === "seat") : events, fresh);
     },
+    signs: (next) => subPets.signs(next), // 在等你的子代理举牌子（subpets.js）
     enabled,
     // 当前 agent 设成不显示桌宠：主宠物和子宠物都离开，但不算“隐藏”，换了 agent 还会出现。
     clear: hideAll,

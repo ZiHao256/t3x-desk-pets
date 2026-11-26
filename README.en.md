@@ -26,6 +26,7 @@ An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensi
 - When the main agent dispatches a subagent (anything T3 registers as a subagent, such as Claude's subagents or tasks sent to Codex or another provider with `delegate_task`), that agent's pet runs over to say hi, takes a seat and gets to work; the main pet turns to glance at it.
 - When a subagent finishes, its pet high-fives the main pet and leaves; on failure it hangs its head for a moment first, and if it sits too far away it waves goodbye instead. When several finish at once, they say goodbye one after another.
 - When there's no room left, a "+N" badge shows the rest, and they take seats as space frees up. Switch to another thread and back, and entrances and exits you missed are replayed.
+- When a subagent with its own thread (such as a `delegate_task` task) is waiting for your approval or reply, its pet holds up a sign; click the sign to open that subagent's thread. If the waiting one is squeezed into "+N", the badge turns into "! +N" and opens the first waiting one. Needs host 0.5.0 or later; a model's built-in subagents (such as Claude's) have no thread of their own, so they don't hold up signs.
 
 ![While Clawd works, the pets of three subagents (Codex, Moffy and Dafeiyu) run in and sit down; Codex high-fives Clawd when it finishes, Moffy hangs its head after failing, and Dafeiyu, sitting too far away, waves goodbye](docs/pets-subagents.gif)
 
@@ -98,7 +99,7 @@ Settings → Desk pets → Add desk pet takes a sheet in this format; the genera
 | 4 | Jump | 9–10 | Look frames for 16 directions (0° is up, clockwise) |
 | 5 | Failed | | |
 
-Pet definitions (entries in `pets.js`; pets added in Settings use the same fields): `name`, `scale` (0.5–2), `pixelFx` (square pixel particles), `smooth` (not pixel art), `badgeBottom` (height of the subagent "+N" badge), `vars` / `darkVars` (`--t3x-pet-*` and `--t3x-sub-*` CSS variables that calibrate where the pet stands and the particle colors; see the defaults in `pets.css`). The bundled Codex-style pet is drawn frame by frame in code by `tools/codex_atlas.py`.
+Pet definitions (entries in `pets.js`; pets added in Settings use the same fields): `name`, `scale` (0.5–2), `pixelFx` (square pixel particles), `smooth` (not pixel art), `badgeBottom` (height of the subagent "+N" badge), `--t3x-pet-sign-y` in `vars` (how high the top of the head is above the feet; the stick of a subagent's sign ends there, 56px by default), `vars` / `darkVars` (`--t3x-pet-*` and `--t3x-sub-*` CSS variables that calibrate where the pet stands and the particle colors; see the defaults in `pets.css`). The bundled Codex-style pet is drawn frame by frame in code by `tools/codex_atlas.py`.
 
 ## Release
 

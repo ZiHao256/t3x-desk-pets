@@ -79,6 +79,69 @@ module.exports = (test) => {
     assert.equal(h.rafs.size, 0);
   });
 
+  test("桌宠：在等你的子代理举牌子，点了跳转；收工放下；挤在 +N 里时徽标代它举", () => {
+    const h = createPetsHarness({ stageWidth: 1200 });
+    h.ctrl.update({ petId: "codex", mood: "idle" });
+    h.advance(50);
+    h.finishAnim(h.mainEls()[0]);
+    const seat = (id) => ({ type: "seat", id, petId: "codex", status: "running" });
+    h.ctrl.subagents(["s1", "s2", "s3", "s4"].map(seat), true);
+    assert.equal(h.subEls().length, 3);
+    assert.equal(h.badgeEl().textContent, "+1");
+    const opened = [];
+    const sign = (id) => ({ label: "等你批准", hint: "打开会话", open: () => opened.push(id) });
+    h.ctrl.signs(new Map([["s2", sign("s2")]]));
+    const signOf = (el) => el.children.find((c) => c.className === "t3x-pet-sign");
+    const [a, b] = h.subEls();
+    assert.equal(signOf(a), undefined);
+    const placard = signOf(b);
+    assert.equal(placard.textContent, "等你批准");
+    let stopped = 0;
+    const ev = { stopPropagation: () => (stopped += 1) };
+    let prevented = 0;
+    placard.dispatch("pointerdown", ev);
+    placard.dispatch("click", ev);
+    placard.dispatch("contextmenu", { ...ev, preventDefault: () => (prevented += 1) });
+    assert.equal(stopped, 3, "按牌子不当成拖宠物，右键也不冒泡到宠物菜单");
+    assert.equal(prevented, 1);
+    assert.deepEqual(opened, ["s2"]);
+    assert.equal(h.badgeEl().dataset.alert, undefined, "+N 里没人在等");
+    assert.equal(h.badgeEl().disabled, true, "没人在等时徽标只是计数，不能聚焦");
+
+    h.ctrl.signs(new Map([["s2", sign("s2")], ["s4", sign("s4")]]));
+    assert.equal(h.badgeEl().dataset.alert, "", "挤在 +N 里的 s4 在等：徽标变成牌子");
+    assert.equal(h.badgeEl().disabled, false);
+    h.badgeEl().dispatch("click", ev);
+    assert.deepEqual(opened, ["s2", "s4"]);
+
+    h.ctrl.subagents([{ type: "finish", id: "s2", ok: true }], false);
+    assert.equal(signOf(b), undefined, "收工就放下牌子");
+    h.ctrl.signs(new Map());
+    assert.equal(h.badgeEl()?.dataset.alert, undefined);
+    h.ctrl.dispose();
+  });
+
+  test("桌宠：挤在 +N 里收工的子代理补播进场时不举牌子", () => {
+    const h = createPetsHarness({ stageWidth: 1200 });
+    h.ctrl.update({ petId: "codex", mood: "idle" });
+    h.advance(50);
+    h.finishAnim(h.mainEls()[0]);
+    h.ctrl.subagents(["s1", "s2", "s3", "s4"].map((id) => ({ type: "seat", id, petId: "codex", status: "running" })), true);
+    const seated = h.subEls();
+    for (const el of seated) h.finishAnim(el);
+    // s4 在 +1 里等你；会话的 needs 还没清掉时它和 s1 先后收工
+    h.ctrl.signs(new Map([["s4", { label: "等你批准", hint: "打开会话", open() {} }]]));
+    h.ctrl.subagents([{ type: "finish", id: "s4", ok: true }, { type: "finish", id: "s1", ok: true }], false);
+    for (let i = 0; i < 20 && h.subEls().length <= 3; i++) {
+      for (const el of h.subEls()) h.finishAnim(el);
+      h.advance(400);
+    }
+    const replayed = h.subEls().filter((el) => !seated.includes(el));
+    assert.equal(replayed.length, 1, "s1 离场后 s4 补播进场");
+    assert.equal(replayed[0].children.some((c) => c.className === "t3x-pet-sign"), false, "补播的已经收工，不举牌子");
+    h.ctrl.dispose();
+  });
+
   test("桌宠：离场、碰头、指针、补播、布局与 rAF 回归", () => {
     // 1. 拖动中切换主宠，松手不会复活旧主宠，dispose 后计时器清零
     {

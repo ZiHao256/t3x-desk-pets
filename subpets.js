@@ -11,6 +11,7 @@ function createSubPets(ctx) {
   const replay = []; // 满座期间收工、等前一只离场后顺位补播的队列：[{ id, petId, status, finishOk }]
   const pending = new Map(); // 舞台或主宠物没就绪时先记下：id -> { petId, status, animate, finishOk }
   const farewells = [];
+  const signs = new Map(); // 在等你的子代理：id -> { label, hint, open }，举牌子，点牌子跳到它的会话
   let current = null; // 正在告别的那只
   let badge = null;
 
@@ -54,6 +55,39 @@ function createSubPets(ctx) {
     if (replay.length > MAX_REPLAY) replay.shift();
   }
 
+  // 牌子是按钮：按下不当成拖宠物，点它跳到那个子代理的会话。
+  function signButton(getId) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    el.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault(); // 右键牌子不弹宠物菜单
+      ev.stopPropagation();
+    });
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      signs.get(getId())?.open();
+    });
+    return el;
+  }
+
+  function syncSign(s) {
+    const want = s.bye ? null : signs.get(s.id);
+    if (!want) {
+      s.sign?.remove();
+      s.sign = null;
+      return;
+    }
+    if (!s.sign) {
+      s.sign = signButton(() => s.id);
+      s.sign.className = "t3x-pet-sign";
+      s.p.el.appendChild(s.sign);
+    }
+    if (s.sign.textContent !== want.label) s.sign.textContent = want.label;
+    s.sign.title = want.hint;
+    s.sign.setAttribute("aria-label", `${want.label}：${want.hint}`);
+  }
+
   function syncBadge() {
     const stage = ctx.stage();
     const m = ctx.main();
@@ -63,10 +97,18 @@ function createSubPets(ctx) {
       return;
     }
     if (!badge) {
-      badge = document.createElement("div");
+      // 挤在 +N 里的子代理在等你时，徽标变成牌子：点它跳到第一个在等的
+      badge = signButton(() => [...extra.keys()].find((id) => signs.has(id)));
       badge.className = "t3x-pet-badge";
       badge.dataset.side = "right";
     }
+    const waiting = [...extra.keys()].find((id) => signs.has(id));
+    if (waiting !== undefined) badge.dataset.alert = "";
+    else delete badge.dataset.alert;
+    badge.title = waiting !== undefined ? signs.get(waiting).hint : "";
+    badge.disabled = waiting === undefined; // 没人在等时只是个计数：不能聚焦，读屏也跳过
+    badge.setAttribute("aria-hidden", String(waiting === undefined));
+    if (waiting !== undefined) badge.setAttribute("aria-label", `+${extra.size}：${signs.get(waiting).hint}`);
     if (badge.parentElement !== stage) stage.appendChild(badge);
     const text = `+${extra.size}`;
     if (badge.textContent !== text) {
@@ -107,6 +149,7 @@ function createSubPets(ctx) {
     s.finishOk = undefined;
     s.status = status;
     s.p.rest = rest(status);
+    syncSign(s);
     if (!s.moving && !s.dragging && !s.bumping) settle(s);
     if (current === s) {
       current = null;
@@ -143,10 +186,12 @@ function createSubPets(ctx) {
     const p = ctx.create(petId);
     p.el.dataset.role = "sub";
     p.rest = rest(status);
-    const s = { id, p, home: x, status, moving: false, dragging: false, bumping: false, bye: false, finishOk: undefined, leaveTimer: 0, runRaf: 0 };
+    // 补播进场的（finishOk 有值）已经收工：一进场就是告别状态，不举牌子
+    const s = { id, p, home: x, status, moving: false, dragging: false, bumping: false, bye: finishOk !== undefined, finishOk: undefined, leaveTimer: 0, runRaf: 0 };
     subs.set(id, s);
     ctx.stage().appendChild(p.el);
     seatAt(s, x, curSpan);
+    syncSign(s);
     if (!animate || ctx.reduced() || document.hidden) {
       if (finishOk !== undefined) {
         s.bye = true;
@@ -285,6 +330,7 @@ function createSubPets(ctx) {
     const s = subs.get(id);
     if (!s || s.bye) return;
     s.bye = true;
+    syncSign(s); // 收工了就放下牌子
     if (quiet || document.hidden || ctx.reduced()) return leave(s, true);
     // 跑来途中、正被拖着或正在互动：结束后再告别，不打断当前动作。
     if (s.moving || s.dragging || s.bumping) {
@@ -351,6 +397,13 @@ function createSubPets(ctx) {
     layout,
     promote,
     reset,
+    // 在等你的子代理：Map<id, { label, hint, open }>，整份替换。
+    signs(next) {
+      signs.clear();
+      for (const [id, sign] of next) signs.set(id, sign);
+      for (const s of subs.values()) syncSign(s);
+      syncBadge();
+    },
     // 拖动子宠物：落座后、告别前、不在互动中才能拖（返回 false 表示不接这次拖动）。
     grab(p) {
       const s = subOf(p);
