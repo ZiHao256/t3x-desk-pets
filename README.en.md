@@ -10,8 +10,6 @@ Built in: a Codex-style pet for Codex, Clawd for Claude, Moffy for Antigravity (
 
 ![Pets standing on the composer](docs/pets-composer.png)
 
-![Desk pet settings: a pet per agent, the pet library and the Generate with AI button](docs/pets-settings.png)
-
 An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensions), an unofficial extension host for [T3 Code](https://github.com/pingdotgg/t3code). Install it in Settings → Extensions → Browse, or paste `https://github.com/ZiHao256/t3x-desk-pets` into the URL field there. "Check for updates" offers this repository's latest release, installed after you confirm.
 
 ## Features
@@ -22,10 +20,14 @@ An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensi
 - The pet swells as the context fills up and gets restless near the limit; while T3 compacts history it squashes itself flat, then pops back.
 - When you switch threads or agents, the old pet leaves and the new one enters.
 
+![As the context fills up, Moffy gets fatter and starts sweating; it squashes itself while the history is compacted and pops back afterwards](docs/pets-swell.gif)
+
 **Subagents**
 - When the main agent dispatches a subagent (anything T3 registers as a subagent, such as Claude's subagents or tasks sent to Codex or another provider with `delegate_task`), that agent's pet runs over to say hi, takes a seat and gets to work; the main pet turns to glance at it.
 - When a subagent finishes, its pet high-fives the main pet and leaves; on failure it hangs its head for a moment first, and if it sits too far away it waves goodbye instead. When several finish at once, they say goodbye one after another.
 - When there's no room left, a "+N" badge shows the rest, and they take seats as space frees up. Switch to another thread and back, and entrances and exits you missed are replayed.
+
+![While Clawd works, the pets of three subagents (Codex, Moffy and Dafeiyu) run in and sit down; Codex high-fives Clawd when it finishes, Moffy hangs its head after failing, and Dafeiyu, sitting too far away, waves goodbye](docs/pets-subagents.gif)
 
 **Playing with pets**
 - Hover over the main pet and it waves; move the pointer nearby and its eyes follow it (16 directions).
@@ -35,9 +37,15 @@ An extension for [T3 Code Extensions](https://github.com/ZiHao256/t3code-extensi
 - Right-click a pet: switch pet, say hi, quiet mode, desk pet settings, hide. Hiding lasts until the next launch; right-click the model picker in the composer to bring them back, switch pets or toggle quiet mode.
 - In quiet mode pets stay put: no wandering, no celebrations, and subagent pets simply sit down and leave. With the system's "reduce motion" setting on, pets also don't wander or turn to follow the pointer.
 
+![Clawd's eyes follow the pointer, it waves on hover and jumps on click; it gets dragged left along the composer, then Codex is dropped onto it and the two bump heads](docs/pets-interact.gif)
+
+![The pet's right-click menu: switch pet (the submenu lists the pet library), say hi, quiet mode, desk pet settings, hide desk pet](docs/pets-menu.png)
+
 **Settings** (Settings → Extensions → Desk pets → Settings, or right-click a pet → Desk pet settings…)
 - A pet for each agent: choose one for every harness configured in T3 and for "other agents", or choose "By model name / fallback" or "Hide pet".
 - Pet library: add pets by uploading a sprite sheet; edit the name, scale, pixel art and pixel-art particles; delete them; or have an agent generate one (see below).
+
+![Desk pet settings: a pet per agent, the pet library and the Generate with AI button](docs/pets-settings.png)
 
 ## Install with an agent
 
